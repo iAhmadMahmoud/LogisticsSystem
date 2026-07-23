@@ -8,6 +8,7 @@
         PickedUp,
         InTranasit,
         Delivered,
+        Completed,
         Cancelled,
         Faild
     }

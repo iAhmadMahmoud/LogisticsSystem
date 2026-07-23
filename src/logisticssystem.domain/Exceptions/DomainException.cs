@@ -1,4 +1,4 @@
-﻿namespace LogisticsSystem.Domain.Common.Exceptions
+﻿namespace LogisticsSystem.Domain.Exceptions
 {
     public sealed class DomainException : Exception
     {

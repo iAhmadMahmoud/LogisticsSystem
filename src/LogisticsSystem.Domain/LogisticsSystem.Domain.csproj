@@ -7,13 +7,21 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Common\" />
-    <Folder Include="Customers\" />
-    <Folder Include="Drivers\" />
-    <Folder Include="SharedKernel\" />
-    <Folder Include="Notifications\" />
-    <Folder Include="Vechicles\" />
-    <Folder Include="Shipments\" />
+    <Compile Remove="Customers\**" />
+    <Compile Remove="Drivers\**" />
+    <Compile Remove="Notifications\**" />
+    <Compile Remove="Shipments\**" />
+    <Compile Remove="Vechicles\**" />
+    <EmbeddedResource Remove="Customers\**" />
+    <EmbeddedResource Remove="Drivers\**" />
+    <EmbeddedResource Remove="Notifications\**" />
+    <EmbeddedResource Remove="Shipments\**" />
+    <EmbeddedResource Remove="Vechicles\**" />
+    <None Remove="Customers\**" />
+    <None Remove="Drivers\**" />
+    <None Remove="Notifications\**" />
+    <None Remove="Shipments\**" />
+    <None Remove="Vechicles\**" />
   </ItemGroup>
 
 </Project>

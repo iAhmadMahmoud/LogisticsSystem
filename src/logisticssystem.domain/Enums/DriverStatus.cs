@@ -5,6 +5,7 @@
         Offline,
         Available,
         Busy,
+        OnBreak,
         Suspended
     }
 }

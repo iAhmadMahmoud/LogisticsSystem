@@ -1,6 +1,8 @@
-﻿namespace LogisticsSystem.Domain.Common.Entities
+﻿using LogisticsSystem.Domain.Common;
+
+namespace LogisticsSystem.Domain.Common
 {
-    public abstract class AuditableEntity : AggregateRoot
+    public abstract class AuditableEntity 
     {
         public DateTime CreatedOnUtc { get; protected set; }
         public DateTime? ModifiedOnUtc { get; protected set; }
