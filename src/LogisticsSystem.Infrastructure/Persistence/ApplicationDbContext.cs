@@ -1,4 +1,4 @@
-﻿namespace LogisticsSystem.Infrastructure.Persistence
+namespace LogisticsSystem.Infrastructure.Persistence
 {
     public class ApplicationDbContext
     {

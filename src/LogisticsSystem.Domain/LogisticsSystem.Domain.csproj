@@ -6,14 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Folder Include="Common\" />
-    <Folder Include="Customers\" />
-    <Folder Include="Drivers\" />
-    <Folder Include="SharedKernel\" />
-    <Folder Include="Notifications\" />
-    <Folder Include="Vechicles\" />
-    <Folder Include="Shipments\" />
-  </ItemGroup>
-
 </Project>

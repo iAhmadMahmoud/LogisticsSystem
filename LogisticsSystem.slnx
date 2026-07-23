@@ -1,12 +1,12 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="LogisticsSystem.Api/LogisticsSystem.Api.csproj" />
-    <Project Path="LogisticsSystem.Application/LogisticsSystem.Application.csproj" />
-    <Project Path="LogisticsSystem.Domain/LogisticsSystem.Domain.csproj" />
-    <Project Path="LogisticsSystem.Infrastructure/LogisticsSystem.Infrastructure.csproj" />
+    <Project Path="src/LogisticsSystem.Api/LogisticsSystem.Api.csproj" />
+    <Project Path="src/LogisticsSystem.Application/LogisticsSystem.Application.csproj" />
+    <Project Path="src/LogisticsSystem.Domain/LogisticsSystem.Domain.csproj" />
+    <Project Path="src/LogisticsSystem.Infrastructure/LogisticsSystem.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="LogisticsSystem.IntegrationTests/LogisticsSystem.IntegrationTests.csproj" />
-    <Project Path="LogisticsSystem.UnitTests/LogisticsSystem.UnitTests.csproj" />
+    <Project Path="tests/LogisticsSystem.IntegrationTests/LogisticsSystem.IntegrationTests.csproj" />
+    <Project Path="tests/LogisticsSystem.UnitTests/LogisticsSystem.UnitTests.csproj" />
   </Folder>
 </Solution>
