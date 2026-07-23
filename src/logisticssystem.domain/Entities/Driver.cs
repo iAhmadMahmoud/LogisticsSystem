@@ -1,10 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using LogisticsSystem.Domain.Common;
+using LogisticsSystem.Domain.Enums;
 
 namespace LogisticsSystem.Domain.Entities
 {
-    internal class Driver
+    public class Driver : AuditableEntity
     {
+        public string LicenseNumber { get; set; } = string.Empty;
+        public DriverStatus Status { get; set; } = DriverStatus.Offline;
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public Guid? VehicleId { get; set; }
+        public Vehicle? Vehicle { get; set; }
+        public ICollection<Shipment> Shipments { get; set; } = new List<Shipment>();
+        public ICollection<DispatchAssignment> DispatchAssignments { get; set; } = new List<DispatchAssignment>();
+
     }
 }

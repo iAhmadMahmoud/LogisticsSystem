@@ -4,9 +4,9 @@ namespace LogisticsSystem.Domain.Common
 {
     public abstract class AuditableEntity 
     {
-        public DateTime CreatedOnUtc { get; protected set; }
-        public DateTime? ModifiedOnUtc { get; protected set; }
-        public Guid? CreatedBy { get; protected set; }
-        public Guid? ModifiedBy { get; protected set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
+        public string? CreatedBy { get; set; }
+        public string? UpdatedBy { get; set; }
     }
 }
