@@ -1,7 +1,7 @@
 ﻿using LogisticsSystem.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace LogisticsSystem.Application.Common.Interfaces
+namespace LogisticsSystem.Application.Common.Interfaces.Persistence
 {
     public interface IApplicationDbContext
     {

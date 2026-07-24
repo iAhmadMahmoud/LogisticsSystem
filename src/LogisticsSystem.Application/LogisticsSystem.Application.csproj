@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -12,12 +12,13 @@
 
   <ItemGroup>
     <Folder Include="Authentication\" />
-    <Folder Include="Customers\" />
-    <Folder Include="Drivers\" />
-    <Folder Include="Dispatch\" />
-    <Folder Include="Interfaces\" />
-    <Folder Include="Notifications\" />
-    <Folder Include="Shipments\" />
+    <Folder Include="Common\Mappings\" />
+    <Folder Include="Common\Models\" />
+    <Folder Include="Common\Specifications\" />
+    <Folder Include="Features\Customers\" />
+    <Folder Include="Features\Drivers\" />
+    <Folder Include="Features\Dispatch\" />
+    <Folder Include="Features\Notifications\" />
   </ItemGroup>
 
   <ItemGroup>

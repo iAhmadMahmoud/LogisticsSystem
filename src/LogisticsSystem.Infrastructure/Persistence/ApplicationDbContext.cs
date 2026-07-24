@@ -1,4 +1,4 @@
-using LogisticsSystem.Application.Common.Interfaces;
+using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;

@@ -15,7 +15,6 @@
     <Folder Include="Authentication\" />
     <Folder Include="BackgroundWorkers\" />
     <Folder Include="DependencyInjection\" />
-    <Folder Include="Repositories\" />
     <Folder Include="Notifications\" />
     <Folder Include="SignalR\" />
   </ItemGroup>

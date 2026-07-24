@@ -1,6 +1,7 @@
-using LogisticsSystem.Application.Common.Interfaces;
+using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Infrastructure.Identity;
 using LogisticsSystem.Infrastructure.Persistence;
+using LogisticsSystem.Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -25,6 +26,14 @@ namespace LogisticsSystem.Infrastructure
                 sp.GetRequiredService<ApplicationDbContext>());
 
 
+            services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+
+
+
+
             services.AddIdentityCore<ApplicationUser>(options =>
             {
                 options.Password.RequiredLength = 8;
@@ -37,6 +46,9 @@ namespace LogisticsSystem.Infrastructure
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<ApplicationDbContext>();
+
+
+
 
 
             return services;
