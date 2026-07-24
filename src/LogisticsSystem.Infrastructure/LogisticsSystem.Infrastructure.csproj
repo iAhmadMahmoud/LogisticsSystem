@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Identity\" />
     <Folder Include="Authentication\" />
     <Folder Include="BackgroundWorkers\" />
     <Folder Include="DependencyInjection\" />

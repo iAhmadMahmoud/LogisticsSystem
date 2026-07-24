@@ -2,6 +2,7 @@
 {
     public enum ShipmentStatus
     {
+        Pending,
         watingForDriver,
         DriverReserved,
         Assigned,
