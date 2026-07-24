@@ -1,6 +1,8 @@
-﻿namespace LogisticsSystem.Application.Features.Shipments.Commands.CreateShipment
+﻿using LogisticsSystem.Application.Features.Shipments.DTOs;
+using MediatR;
+
+namespace LogisticsSystem.Application.Features.Shipments.Commands.CreateShipment
 {
-    public class CreateShipmentCommand
-    {
-    }
+    public record CreateShipmentCommand(CreateShipmentDto Shipment) : IRequest<Guid>;
+    
 }
