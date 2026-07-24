@@ -1,4 +1,5 @@
 ﻿using LogisticsSystem.Application.Features.Shipments.Commands.CreateShipment;
+using LogisticsSystem.Application.Features.Shipments.Queries.GetShipmentById;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -26,9 +27,10 @@ namespace LogisticsSystem.Api.Controllers
         }
 
         [HttpGet("{id:Guid}")]
-        public IActionResult GetById(Guid id)
+        public async Task<IActionResult> GetById(Guid id,CancellationToken cancellationToken)
         {
-            return Ok();
+            var shipment = await _sender.Send(new GetShipmentByIdQuery(id), cancellationToken);
+            return Ok(shipment);
         }
     }
 }
