@@ -22,7 +22,7 @@ namespace LogisticsSystem.Application
                 typeof(IPipelineBehavior<,>),
                 typeof(ValidationBehavior<,>));
 
-            services.AddAutoMapper(typeof(DependencyInjection).Assembly);
+            services.AddAutoMapper(cfg => cfg.AddMaps(typeof(DependencyInjection).Assembly));
 
             return services;
         }
