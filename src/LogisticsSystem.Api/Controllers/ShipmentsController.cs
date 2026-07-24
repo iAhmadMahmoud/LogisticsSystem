@@ -1,4 +1,7 @@
 ﻿using LogisticsSystem.Application.Features.Shipments.Commands.CreateShipment;
+using LogisticsSystem.Application.Features.Shipments.Commands.DeleteShipment;
+using LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment;
+using LogisticsSystem.Application.Features.Shipments.Queries.GetAllShipments;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetShipmentById;
 using MediatR;
 using Microsoft.AspNetCore.Http;
@@ -31,6 +34,32 @@ namespace LogisticsSystem.Api.Controllers
         {
             var shipment = await _sender.Send(new GetShipmentByIdQuery(id), cancellationToken);
             return Ok(shipment);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
+        {
+            var result = await _sender.Send(new GetAllShipmentsQuery(), cancellationToken);
+            return Ok(result);
+        }
+
+        [HttpPut("{id:guid}")]
+        public async Task<IActionResult> Update(Guid id, UpdateShipmentCommand command, CancellationToken cancellationToken)
+        {
+            if (id != command.Shipment.Id)
+                return BadRequest("Route id does not match body id.");
+
+            await _sender.Send(command, cancellationToken);
+
+            return NoContent();
+        }
+
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+        {
+            await _sender.Send(new DeleteShipmentCommand(id), cancellationToken);
+
+            return NoContent();
         }
     }
 }

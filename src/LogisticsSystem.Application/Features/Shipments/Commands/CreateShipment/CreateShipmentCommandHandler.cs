@@ -2,7 +2,6 @@
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
 using MediatR;
-using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace LogisticsSystem.Application.Features.Shipments.Commands.CreateShipment
 {
