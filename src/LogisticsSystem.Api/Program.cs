@@ -1,3 +1,4 @@
+using LogisticsSystem.Api.Common.Extensions;
 using LogisticsSystem.Application;
 using LogisticsSystem.Infrastructure;
 
@@ -17,6 +18,10 @@ public class Program
         builder.Services.AddApplication();
         builder.Services.AddInfrastructure(builder.Configuration);
 
+        builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
+        builder.Services.AddProblemDetails();
+
         var app = builder.Build();
 
         if (app.Environment.IsDevelopment())
@@ -26,6 +31,10 @@ public class Program
         }
 
         app.UseHttpsRedirection();
+
+        app.UseExceptionHandler();
+
+        app.UseAuthentication();
 
         app.UseAuthorization();
 

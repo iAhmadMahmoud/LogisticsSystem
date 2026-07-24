@@ -1,6 +1,7 @@
 using FluentValidation;
+using LogisticsSystem.Application.Common.Behaviors;
+using MediatR;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
 
 namespace LogisticsSystem.Application
 {
@@ -9,14 +10,17 @@ namespace LogisticsSystem.Application
         public static IServiceCollection AddApplication(this IServiceCollection services)
         {
 
-            var assembly =  Assembly.GetExecutingAssembly();
 
             services.AddMediatR(cfg =>
             {
-                cfg.RegisterServicesFromAssembly(assembly);
+                cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
             });
 
-            services.AddValidatorsFromAssembly(assembly);
+            services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
+
+            services.AddTransient(
+                typeof(IPipelineBehavior<,>),
+                typeof(ValidationBehavior<,>));
 
             return services;
         }

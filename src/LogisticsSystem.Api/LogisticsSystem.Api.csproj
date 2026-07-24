@@ -26,9 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\" />
     <Folder Include="Middleware\" />
-    <Folder Include="Extensions\" />
     <Folder Include="Configuration\" />
     <Folder Include="Hubs\" />
   </ItemGroup>
