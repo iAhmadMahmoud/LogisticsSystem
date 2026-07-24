@@ -6,7 +6,7 @@ namespace LogisticsSystem.Api;
 
 public class Program
 {
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +23,12 @@ public class Program
         builder.Services.AddProblemDetails();
 
         var app = builder.Build();
+
+        using (var scope = app.Services.CreateScope())
+        {
+            var dbInitializer = scope.ServiceProvider.GetRequiredService<LogisticsSystem.Infrastructure.Persistence.Seed.DbInitializer>();
+            await dbInitializer.InitializeAsync();
+        }
 
         if (app.Environment.IsDevelopment())
         {

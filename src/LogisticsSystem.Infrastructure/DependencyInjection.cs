@@ -47,9 +47,7 @@ namespace LogisticsSystem.Infrastructure
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<ApplicationDbContext>();
 
-
-
-
+            services.AddScoped<LogisticsSystem.Infrastructure.Persistence.Seed.DbInitializer>();
 
             return services;
         }
