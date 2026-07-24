@@ -5,6 +5,7 @@ namespace LogisticsSystem.Domain.Entities
 {
     public class Driver : AuditableEntity
     {
+        public Guid UserId { get; set; }
         public string LicenseNumber { get; set; } = string.Empty;
         public DriverStatus Status { get; set; } = DriverStatus.Offline;
         public double? Latitude { get; set; }

@@ -1,4 +1,5 @@
 ﻿using LogisticsSystem.Domain.Common;
+using LogisticsSystem.Domain.Enums;
 
 namespace LogisticsSystem.Domain.Entities
 {
@@ -7,7 +8,7 @@ namespace LogisticsSystem.Domain.Entities
         public Guid ShipmentId { get; set; }
         public Guid DriverId { get; set; }
         public int AttemptNumber { get; set; }
-        public bool Accepted { get; set; }
+        public AssignmentStatus Status { get; set; } = AssignmentStatus.Pending;
         public DateTime SentAt { get; set; }
         public DateTime? RespondedAt { get; set; }
         public Shipment Shipment { get; set; } = default!;

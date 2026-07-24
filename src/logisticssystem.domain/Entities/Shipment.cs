@@ -23,14 +23,14 @@ namespace LogisticsSystem.Domain.Entities
         public string? Notes { get; set; }
         public DateTime ScheduledAt { get; set; }
 
-        public DateTime? AssigendAt { get; set; }
+        public DateTime? AssignedAt { get; set; }
         public DateTime? PickedUpAt { get; set; }
         public DateTime? DeliveredAt { get; set; }
         public DateTime? CancelledAt { get; set; }
 
         public Customer Customer { get; set; } = default!;
         public Driver? Driver { get; set; }
-        public ICollection<ShipmentTracking> ShipmentTracking { get; set; } = new List<ShipmentTracking>();
+        public ICollection<ShipmentTracking> ShipmentTrackings { get; set; } = new List<ShipmentTracking>();
         public ICollection<DispatchAssignment> DispatchAssignments { get; set; } = new List<DispatchAssignment>();
 
     }
