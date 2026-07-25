@@ -24,6 +24,8 @@ namespace LogisticsSystem.Application.Features.Shipments.Queries.GetAllShipments
         {
             var query = _repository.AsQueryable(); 
 
+            query = ApplySearching(query, request);
+            query = ApplyFiltering(query, request);
             query = ApplySorting(query, request);
 
             var totalCount = await query.CountAsync(cancellationToken);
@@ -78,6 +80,52 @@ namespace LogisticsSystem.Application.Features.Shipments.Queries.GetAllShipments
                     ? query.OrderByDescending(x => x.ScheduledAt)
                     : query.OrderBy(x => x.ScheduledAt)
             };
+        }
+        private static IQueryable<Shipment> ApplyFiltering(IQueryable<Shipment> query, GetAllShipmentsQuery request)
+        {
+            if (request.Status.HasValue)
+            {
+                query = query.Where(x => x.Status == request.Status.Value);
+            }
+
+            if (request.Priority.HasValue)
+            {
+                query = query.Where(x => x.Priority == request.Priority.Value);
+            }
+
+            if (request.CustomerId.HasValue)
+            {
+                query = query.Where(x => x.CustomerId == request.CustomerId.Value);
+            }
+
+            if (request.DriverId.HasValue)
+            {
+                query = query.Where(x => x.DriverId == request.DriverId.Value);
+            }
+
+            if (request.ScheduledFrom.HasValue)
+            {
+                query = query.Where(x => x.ScheduledAt >= request.ScheduledFrom.Value);
+            }
+
+            if (request.ScheduledTo.HasValue)
+            {
+                query = query.Where(x => x.ScheduledAt <= request.ScheduledTo.Value);
+            }
+
+            return query;
+        }
+        private static IQueryable<Shipment> ApplySearching(IQueryable<Shipment> query, GetAllShipmentsQuery request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Search))
+                return query;
+
+            var search = request.Search.Trim().ToLower();
+
+            return query.Where(x =>
+                x.TrackingNumber.ToLower().Contains(search) ||
+                x.PickupAddress.ToLower().Contains(search) ||
+                x.DeliveryAddress.ToLower().Contains(search));
         }
     }
 }
