@@ -1,11 +1,15 @@
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Infrastructure.Authentication.Jwt;
 using LogisticsSystem.Infrastructure.Identity;
 using LogisticsSystem.Infrastructure.Persistence;
 using LogisticsSystem.Infrastructure.Persistence.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace LogisticsSystem.Infrastructure
 {
@@ -43,11 +47,47 @@ namespace LogisticsSystem.Infrastructure
                 options.Password.RequireNonAlphanumeric = true;
 
                 options.User.RequireUniqueEmail = true;
+
+                options.SignIn.RequireConfirmedEmail = false;
+
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<ApplicationDbContext>();
 
-            services.AddScoped<LogisticsSystem.Infrastructure.Persistence.Seed.DbInitializer>();
+            services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
+
+            services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                })
+                .AddJwtBearer(options =>
+                {
+                    var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()!;
+
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+
+                        ValidIssuer = jwt.Issuer,
+                        ValidAudience = jwt.Audience,
+
+                        IssuerSigningKey = new SymmetricSecurityKey(
+                            Encoding.UTF8.GetBytes(jwt.Secret)),
+
+                        ClockSkew = TimeSpan.Zero
+                    };
+                });
+
+            services.AddAuthorization();
+
+            services.AddScoped<Persistence.Seed.DbInitializer>();
 
             return services;
         }
