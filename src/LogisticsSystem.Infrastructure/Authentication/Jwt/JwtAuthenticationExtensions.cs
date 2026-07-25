@@ -4,7 +4,7 @@ using System.Text;
 
 namespace LogisticsSystem.Infrastructure.Authentication.Jwt
 {
-    internal class JwtConfigurator
+    internal class JwtAuthenticationExtensions
     {
     }
 }

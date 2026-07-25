@@ -1,4 +1,6 @@
+using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Infrastructure.Authentication.Identity;
 using LogisticsSystem.Infrastructure.Authentication.Jwt;
 using LogisticsSystem.Infrastructure.Identity;
 using LogisticsSystem.Infrastructure.Persistence;
@@ -55,7 +57,10 @@ namespace LogisticsSystem.Infrastructure
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             })
             .AddRoles<IdentityRole<Guid>>()
-            .AddEntityFrameworkStores<ApplicationDbContext>();
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddSignInManager();
+
+            services.AddHttpContextAccessor();
 
             services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
 
@@ -79,7 +84,7 @@ namespace LogisticsSystem.Infrastructure
                         ValidAudience = jwt.Audience,
 
                         IssuerSigningKey = new SymmetricSecurityKey(
-                            Encoding.UTF8.GetBytes(jwt.Secret)),
+                            Encoding.UTF8.GetBytes(jwt.SecretKey)),
 
                         ClockSkew = TimeSpan.Zero
                     };
@@ -88,6 +93,8 @@ namespace LogisticsSystem.Infrastructure
             services.AddAuthorization();
 
             services.AddScoped<Persistence.Seed.DbInitializer>();
+            services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+            services.AddScoped<IIdentityService, IdentityService>();
 
             return services;
         }

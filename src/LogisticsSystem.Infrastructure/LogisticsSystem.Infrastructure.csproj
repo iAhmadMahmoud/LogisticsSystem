@@ -12,9 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Authentication\RefreshTokens\" />
     <Folder Include="BackgroundWorkers\" />
-    <Folder Include="DependencyInjection\" />
     <Folder Include="Notifications\" />
     <Folder Include="SignalR\" />
   </ItemGroup>
