@@ -1,12 +1,13 @@
-﻿using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Application.Common.Specifications;
 using LogisticsSystem.Domain.Common;
+using LogisticsSystem.Infrastructure.Persistence.Specifications;
 using Microsoft.EntityFrameworkCore;
 
 namespace LogisticsSystem.Infrastructure.Persistence.Repositories
 {
     public class GenericRepository<TEntity> : IGenericRepository<TEntity> where TEntity : BaseEntity
     {
-
         protected readonly ApplicationDbContext _context;
         protected readonly DbSet<TEntity> _dbSet;
 
@@ -50,6 +51,31 @@ namespace LogisticsSystem.Infrastructure.Persistence.Repositories
         {
             return _dbSet.AsQueryable();
         }
-        
+
+        public virtual async Task<IReadOnlyList<TEntity>> ListAsync(
+            ISpecification<TEntity> specification,
+            CancellationToken cancellationToken = default)
+        {
+            return await ApplySpecification(specification, evaluatePaging: true).ToListAsync(cancellationToken);
+        }
+
+        public virtual async Task<int> CountAsync(
+            ISpecification<TEntity> specification,
+            CancellationToken cancellationToken = default)
+        {
+            return await ApplySpecification(specification, evaluatePaging: false).CountAsync(cancellationToken);
+        }
+
+        public virtual async Task<TEntity?> FirstOrDefaultAsync(
+            ISpecification<TEntity> specification,
+            CancellationToken cancellationToken = default)
+        {
+            return await ApplySpecification(specification, evaluatePaging: true).FirstOrDefaultAsync(cancellationToken);
+        }
+
+        private IQueryable<TEntity> ApplySpecification(ISpecification<TEntity> specification, bool evaluatePaging = true)
+        {
+            return SpecificationEvaluator<TEntity>.GetQuery(_dbSet.AsQueryable(), specification, evaluatePaging);
+        }
     }
 }
