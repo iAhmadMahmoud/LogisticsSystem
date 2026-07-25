@@ -37,9 +37,9 @@ namespace LogisticsSystem.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
+        public async Task<IActionResult> GetAll([FromQuery] GetAllShipmentsQuery query, CancellationToken cancellationToken)
         {
-            var result = await _sender.Send(new GetAllShipmentsQuery(), cancellationToken);
+            var result = await _sender.Send(query, cancellationToken);
             return Ok(result);
         }
 

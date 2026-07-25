@@ -13,7 +13,6 @@
   <ItemGroup>
     <Folder Include="Authentication\" />
     <Folder Include="Common\Mappings\" />
-    <Folder Include="Common\Models\" />
     <Folder Include="Common\Specifications\" />
     <Folder Include="Features\Customers\" />
     <Folder Include="Features\Drivers\" />
