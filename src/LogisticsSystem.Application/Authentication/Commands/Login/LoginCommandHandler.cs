@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace LogisticsSystem.Application.Authentication.Commands.Commands.Login
+namespace LogisticsSystem.Application.Authentication.Commands.Login
 {
     public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthenticationResult>
     {

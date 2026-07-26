@@ -1,10 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using LogisticsSystem.Application.Common.Interfaces.Authentication;
+using System.Security.Cryptography;
 
 namespace LogisticsSystem.Infrastructure.Authentication.Tokens
 {
-    internal class RefreshTokenGenerator
+    public sealed class RefreshTokenGenerator : IRefreshTokenGenerator
     {
+        public string GenerateToken()
+        {
+            var randomBytes = RandomNumberGenerator.GetBytes(64);
+
+            return Convert.ToBase64String(randomBytes);
+        }
     }
 }

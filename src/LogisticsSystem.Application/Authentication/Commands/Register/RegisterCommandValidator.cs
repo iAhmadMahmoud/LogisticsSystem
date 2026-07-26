@@ -1,6 +1,6 @@
 ﻿using FluentValidation;
 
-namespace LogisticsSystem.Application.Authentication.Commands.Commands.Register
+namespace LogisticsSystem.Application.Authentication.Commands.Register
 {
     public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
     {

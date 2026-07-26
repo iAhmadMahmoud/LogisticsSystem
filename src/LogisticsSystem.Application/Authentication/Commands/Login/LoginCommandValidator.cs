@@ -1,6 +1,6 @@
 ﻿using FluentValidation;
 
-namespace LogisticsSystem.Application.Authentication.Commands.Commands.Login
+namespace LogisticsSystem.Application.Authentication.Commands.Login
 {
     public class LoginCommandValidator : AbstractValidator<LoginCommand>
     {

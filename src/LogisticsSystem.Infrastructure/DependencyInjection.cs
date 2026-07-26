@@ -2,6 +2,7 @@ using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Infrastructure.Authentication.Identity;
 using LogisticsSystem.Infrastructure.Authentication.Jwt;
+using LogisticsSystem.Infrastructure.Authentication.Tokens;
 using LogisticsSystem.Infrastructure.Identity;
 using LogisticsSystem.Infrastructure.Persistence;
 using LogisticsSystem.Infrastructure.Persistence.Repositories;

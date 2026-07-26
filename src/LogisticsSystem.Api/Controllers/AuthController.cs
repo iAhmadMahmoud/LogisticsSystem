@@ -1,5 +1,5 @@
-﻿using LogisticsSystem.Application.Authentication.Commands.Commands.Login;
-using LogisticsSystem.Application.Authentication.Commands.Commands.Register;
+using LogisticsSystem.Application.Authentication.Commands.Login;
+using LogisticsSystem.Application.Authentication.Commands.Register;
 using LogisticsSystem.Application.Common.Models.Authentication;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
