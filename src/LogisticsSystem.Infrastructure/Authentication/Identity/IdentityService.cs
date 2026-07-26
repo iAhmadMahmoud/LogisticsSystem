@@ -8,6 +8,7 @@ using LogisticsSystem.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 
+
 namespace LogisticsSystem.Infrastructure.Authentication.Identity
 {
     public sealed class IdentityService : IIdentityService
@@ -53,9 +54,59 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             throw new NotImplementedException();
         }
 
-        public Task<AuthenticationResult> LoginAsync(LoginRequest request)
+        public async Task<AuthenticationResult> LoginAsync(LoginRequest request)
         {
-            throw new NotImplementedException();
+            var user  = await _userManager.FindByEmailAsync(request.Email);
+
+            if(user is null)
+            {
+                throw new UnauthorizedAccessException("Invalid email or password.");
+            }
+
+            if (!user.IsActive)
+            {
+                throw new UnauthorizedAccessException("Your account has been deactivated.");
+            }
+
+            if (!user.EmailConfirmed)
+            {
+                throw new UnauthorizedAccessException("Please confirm your email before logging in.");
+            }
+
+            var passwordValid = await _userManager.CheckPasswordAsync(user,request.Password);
+
+            if (!passwordValid)
+            {
+                throw new UnauthorizedAccessException("Invalid email or password.");
+            }
+
+            var roles = await _userManager.GetRolesAsync(user);
+
+            var jwtUser = new JwtUser
+            {
+                Id = user.Id,
+                Email = user.Email!,
+                UserName = user.UserName!,
+                Roles = roles.ToList()
+            };
+
+            var accessToken = await _jwtTokenGenerator.GenerateAccessTokenAsync(jwtUser);
+
+            user.LastLoginAt = DateTime.UtcNow;
+
+            await _userManager.UpdateAsync(user);
+
+            return new AuthenticationResult
+            {
+                AccessToken = accessToken,
+                RefreshToken = string.Empty, 
+                ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenExpirationMinutes),
+
+                Email = user.Email!,
+                UserName = user.UserName!,
+                EmailConfirmed = user.EmailConfirmed
+            };
+
         }
 
         public Task LogoutAsync(Guid userId)
