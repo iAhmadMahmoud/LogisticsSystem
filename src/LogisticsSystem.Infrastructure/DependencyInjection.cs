@@ -94,6 +94,7 @@ namespace LogisticsSystem.Infrastructure
 
             services.AddScoped<Persistence.Seed.DbInitializer>();
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+            services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
             services.AddScoped<IIdentityService, IdentityService>();
 
             return services;

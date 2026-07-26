@@ -16,21 +16,27 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
         private readonly IGenericRepository<Customer> _customerRepository;
+        private readonly IGenericRepository<RefreshToken> _refreshTokenRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly JwtOptions _jwtOptions;
+        private readonly IRefreshTokenGenerator _refreshTokenGenerator;
 
         public IdentityService(
             UserManager<ApplicationUser> userManager,
             IJwtTokenGenerator jwtTokenGenerator,
             IUnitOfWork unitOfWork,
             IOptions<JwtOptions> jwtOptions,
-            IGenericRepository<Customer> customerRepository)
+            IGenericRepository<Customer> customerRepository,
+            IRefreshTokenGenerator refreshTokenGenerator,
+            IGenericRepository<RefreshToken> refreshTokenRepository)
         {
             _userManager = userManager;
             _jwtTokenGenerator = jwtTokenGenerator;
             _unitOfWork = unitOfWork;
             _jwtOptions = jwtOptions.Value;
             _customerRepository = customerRepository;
+            _refreshTokenGenerator = refreshTokenGenerator;
+            _refreshTokenRepository = refreshTokenRepository;
         }
 
         public Task ChangePasswordAsync(ChangePasswordRequest request)
@@ -156,6 +162,10 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
             return await CreateAuthenticationResultAsync(user);
         }
+        public Task ResetPasswordAsync(ResetPasswordRequest request)
+        {
+            throw new NotImplementedException();
+        }
 
         private async Task<AuthenticationResult> CreateAuthenticationResultAsync(ApplicationUser user)
         {
@@ -171,10 +181,12 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
             var accessToken = await _jwtTokenGenerator.GenerateAccessTokenAsync(jwtUser);
 
+            var refreshToken = await CreateRefreshTokenAsync(user);
+
             return new AuthenticationResult
             {
                 AccessToken = accessToken,
-                RefreshToken = string.Empty,
+                RefreshToken = refreshToken.Token,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenExpirationMinutes),
 
                 Email = user.Email!,
@@ -182,10 +194,24 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
                 EmailConfirmed = user.EmailConfirmed
             };
         }
-
-        public Task ResetPasswordAsync(ResetPasswordRequest request)
+        private async Task<RefreshToken> CreateRefreshTokenAsync(ApplicationUser user)
         {
-            throw new NotImplementedException();
+            var refreshTokenValue = _refreshTokenGenerator.GenerateToken();
+
+            var refreshToken = new RefreshToken
+            {
+                UserId = user.Id,
+                Token = refreshTokenValue,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenExpirationDays)
+            };
+
+            await _refreshTokenRepository.AddAsync(refreshToken);
+
+            await _unitOfWork.SaveChangesAsync();
+
+            return refreshToken;
         }
+
     }
 }
