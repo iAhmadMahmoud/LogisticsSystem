@@ -1,7 +1,9 @@
-﻿namespace LogisticsSystem.Application.Common.Interfaces.Authentication
+using LogisticsSystem.Domain.Entities;
+
+namespace LogisticsSystem.Application.Common.Interfaces.Authentication
 {
     public interface IRefreshTokenGenerator
     {
-        string GenerateToken();
+        RefreshToken Generate(Guid userId, int expirationDays);
     }
 }

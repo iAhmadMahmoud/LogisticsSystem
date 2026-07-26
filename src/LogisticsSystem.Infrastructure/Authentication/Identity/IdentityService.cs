@@ -1,6 +1,7 @@
 using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Common.Models.Authentication;
+using LogisticsSystem.Application.Specifications;
 using LogisticsSystem.Domain.Constants;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Infrastructure.Authentication.Jwt;
@@ -98,9 +99,40 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             throw new NotImplementedException();
         }
 
-        public Task<AuthenticationResult> RefreshTokenAsync(string refreshToken)
+        public async Task<AuthenticationResult> RefreshTokenAsync(string refreshToken)
         {
-            throw new NotImplementedException();
+            var specification = new RefreshTokenByTokenSpecification(refreshToken);
+
+            var storedToken = await _refreshTokenRepository.FirstOrDefaultAsync(specification);
+            
+            if(storedToken is null)
+            {
+                throw new UnauthorizedAccessException("Invalid refresh token.");
+            }
+
+            if (!storedToken.IsActive)
+            {
+                throw new UnauthorizedAccessException("Refresh token is no longer valid.");
+            }
+
+            var user = await _userManager.FindByIdAsync(storedToken.UserId.ToString());
+
+            if (user is null)
+            {
+                throw new UnauthorizedAccessException("User not found.");
+            }
+
+            var newRefreshToken = _refreshTokenGenerator.Generate(
+                user.Id,
+                _jwtOptions.RefreshTokenExpirationDays);
+
+            storedToken.ReplacedByToken = newRefreshToken.Token;
+
+            await _refreshTokenRepository.AddAsync(newRefreshToken);
+
+            await _unitOfWork.SaveChangesAsync();
+
+            return await CreateAuthenticationResultAsync(user);
         }
 
         public async Task<AuthenticationResult> RegisterAsync(RegisterRequest request)
@@ -196,15 +228,9 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
         }
         private async Task<RefreshToken> CreateRefreshTokenAsync(ApplicationUser user)
         {
-            var refreshTokenValue = _refreshTokenGenerator.GenerateToken();
-
-            var refreshToken = new RefreshToken
-            {
-                UserId = user.Id,
-                Token = refreshTokenValue,
-                CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddDays(_jwtOptions.RefreshTokenExpirationDays)
-            };
+            var refreshToken = _refreshTokenGenerator.Generate(
+                user.Id,
+                _jwtOptions.RefreshTokenExpirationDays);
 
             await _refreshTokenRepository.AddAsync(refreshToken);
 
