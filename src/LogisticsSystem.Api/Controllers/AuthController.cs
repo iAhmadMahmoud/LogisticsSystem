@@ -1,4 +1,5 @@
 using LogisticsSystem.Application.Authentication.Commands.Login;
+using LogisticsSystem.Application.Authentication.Commands.RefreshToken;
 using LogisticsSystem.Application.Authentication.Commands.Register;
 using LogisticsSystem.Application.Common.Models.Authentication;
 using MediatR;
@@ -33,6 +34,14 @@ namespace LogisticsSystem.Api.Controllers
         public async Task<IActionResult> Login(LoginRequest request)
         {
             var result = await _sender.Send(new LoginCommand(request));
+
+            return Ok(result);
+        }
+
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenCommand command)
+        {
+            var result = await _sender.Send(command);
 
             return Ok(result);
         }

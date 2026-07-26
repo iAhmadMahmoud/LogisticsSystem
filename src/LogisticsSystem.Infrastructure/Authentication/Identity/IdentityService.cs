@@ -122,17 +122,24 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
                 throw new UnauthorizedAccessException("User not found.");
             }
 
-            var newRefreshToken = _refreshTokenGenerator.Generate(
-                user.Id,
-                _jwtOptions.RefreshTokenExpirationDays);
+            if (!user.IsActive)
+            {
+                throw new UnauthorizedAccessException("User account is inactive.");
+            }
 
+            var newRefreshToken = _refreshTokenGenerator.Generate(user.Id, _jwtOptions.RefreshTokenExpirationDays);
+
+            storedToken.IsRevoked = true;
+            storedToken.RevokedAt = DateTime.UtcNow;
             storedToken.ReplacedByToken = newRefreshToken.Token;
+
+            _refreshTokenRepository.Update(storedToken);
 
             await _refreshTokenRepository.AddAsync(newRefreshToken);
 
             await _unitOfWork.SaveChangesAsync();
 
-            return await CreateAuthenticationResultAsync(user);
+            return await CreateAuthenticationResultAsync(user, newRefreshToken);
         }
 
         public async Task<AuthenticationResult> RegisterAsync(RegisterRequest request)
@@ -199,7 +206,7 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             throw new NotImplementedException();
         }
 
-        private async Task<AuthenticationResult> CreateAuthenticationResultAsync(ApplicationUser user)
+        private async Task<AuthenticationResult> CreateAuthenticationResultAsync(ApplicationUser user, RefreshToken? refreshToken = null)
         {
             var roles = await _userManager.GetRolesAsync(user);
 
@@ -213,7 +220,10 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
             var accessToken = await _jwtTokenGenerator.GenerateAccessTokenAsync(jwtUser);
 
-            var refreshToken = await CreateRefreshTokenAsync(user);
+            if (refreshToken is null)
+            {
+                refreshToken = await CreateRefreshTokenAsync(user);
+            }
 
             return new AuthenticationResult
             {
