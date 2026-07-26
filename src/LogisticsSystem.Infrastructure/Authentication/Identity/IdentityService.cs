@@ -94,9 +94,27 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             return await CreateAuthenticationResultAsync(user);
         }
 
-        public Task LogoutAsync(Guid userId)
+        public async Task LogoutAsync(string refreshToken)
         {
-            throw new NotImplementedException();
+            var specfication = new RefreshTokenByTokenSpecification(refreshToken);
+
+            var storedToken = await _refreshTokenRepository.FirstOrDefaultAsync(specfication);
+
+            if(storedToken is null)
+            {
+                throw new UnauthorizedAccessException("Invaild refresh token.");
+            }
+
+            if (storedToken.IsRevoked)
+                return;
+
+            storedToken.IsRevoked = true;
+            storedToken.RevokedAt = DateTime.UtcNow;
+
+            _refreshTokenRepository.Update(storedToken);
+
+            await _unitOfWork.SaveChangesAsync();
+            
         }
 
         public async Task<AuthenticationResult> RefreshTokenAsync(string refreshToken)

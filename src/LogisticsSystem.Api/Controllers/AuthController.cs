@@ -1,4 +1,5 @@
 using LogisticsSystem.Application.Authentication.Commands.Login;
+using LogisticsSystem.Application.Authentication.Commands.Logout;
 using LogisticsSystem.Application.Authentication.Commands.RefreshToken;
 using LogisticsSystem.Application.Authentication.Commands.Register;
 using LogisticsSystem.Application.Common.Models.Authentication;
@@ -44,6 +45,14 @@ namespace LogisticsSystem.Api.Controllers
             var result = await _sender.Send(command);
 
             return Ok(result);
+        }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout([FromBody] LogoutCommand command)
+        {
+            await _sender.Send(command);
+
+            return NoContent();
         }
     }
 }
