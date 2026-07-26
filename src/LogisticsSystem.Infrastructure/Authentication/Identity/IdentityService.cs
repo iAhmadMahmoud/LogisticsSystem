@@ -14,8 +14,6 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
     public sealed class IdentityService : IIdentityService
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly RoleManager<IdentityRole<Guid>> _roleManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
         private readonly IGenericRepository<Customer> _customerRepository;
         private readonly IUnitOfWork _unitOfWork;
@@ -23,16 +21,12 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
         public IdentityService(
             UserManager<ApplicationUser> userManager,
-            RoleManager<IdentityRole<Guid>> roleManager,
-            SignInManager<ApplicationUser> signInManager,
             IJwtTokenGenerator jwtTokenGenerator,
             IUnitOfWork unitOfWork,
             IOptions<JwtOptions> jwtOptions,
             IGenericRepository<Customer> customerRepository)
         {
             _userManager = userManager;
-            _roleManager = roleManager;
-            _signInManager = signInManager;
             _jwtTokenGenerator = jwtTokenGenerator;
             _unitOfWork = unitOfWork;
             _jwtOptions = jwtOptions.Value;
@@ -56,9 +50,9 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
         public async Task<AuthenticationResult> LoginAsync(LoginRequest request)
         {
-            var user  = await _userManager.FindByEmailAsync(request.Email);
+            var user = await _userManager.FindByEmailAsync(request.Email);
 
-            if(user is null)
+            if (user is null)
             {
                 throw new UnauthorizedAccessException("Invalid email or password.");
             }
@@ -73,40 +67,24 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
                 throw new UnauthorizedAccessException("Please confirm your email before logging in.");
             }
 
-            var passwordValid = await _userManager.CheckPasswordAsync(user,request.Password);
+            var passwordValid = await _userManager.CheckPasswordAsync(user, request.Password);
 
             if (!passwordValid)
             {
                 throw new UnauthorizedAccessException("Invalid email or password.");
             }
 
-            var roles = await _userManager.GetRolesAsync(user);
-
-            var jwtUser = new JwtUser
-            {
-                Id = user.Id,
-                Email = user.Email!,
-                UserName = user.UserName!,
-                Roles = roles.ToList()
-            };
-
-            var accessToken = await _jwtTokenGenerator.GenerateAccessTokenAsync(jwtUser);
-
             user.LastLoginAt = DateTime.UtcNow;
 
-            await _userManager.UpdateAsync(user);
+            var updateResult = await _userManager.UpdateAsync(user);
 
-            return new AuthenticationResult
+            if (!updateResult.Succeeded)
             {
-                AccessToken = accessToken,
-                RefreshToken = string.Empty, 
-                ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenExpirationMinutes),
+                throw new InvalidOperationException(
+                    string.Join(", ", updateResult.Errors.Select(x => x.Description)));
+            }
 
-                Email = user.Email!,
-                UserName = user.UserName!,
-                EmailConfirmed = user.EmailConfirmed
-            };
-
+            return await CreateAuthenticationResultAsync(user);
         }
 
         public Task LogoutAsync(Guid userId)
@@ -176,10 +154,13 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
             await _unitOfWork.SaveChangesAsync();
 
-            // Get Roles
+            return await CreateAuthenticationResultAsync(user);
+        }
+
+        private async Task<AuthenticationResult> CreateAuthenticationResultAsync(ApplicationUser user)
+        {
             var roles = await _userManager.GetRolesAsync(user);
 
-            // Create JWT User
             var jwtUser = new JwtUser
             {
                 Id = user.Id,
@@ -188,7 +169,6 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
                 Roles = roles.ToList()
             };
 
-            // Generate Access Token
             var accessToken = await _jwtTokenGenerator.GenerateAccessTokenAsync(jwtUser);
 
             return new AuthenticationResult
@@ -197,9 +177,9 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
                 RefreshToken = string.Empty,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenExpirationMinutes),
 
-                EmailConfirmed = user.EmailConfirmed,
+                Email = user.Email!,
                 UserName = user.UserName!,
-                Email = user.Email!
+                EmailConfirmed = user.EmailConfirmed
             };
         }
 
