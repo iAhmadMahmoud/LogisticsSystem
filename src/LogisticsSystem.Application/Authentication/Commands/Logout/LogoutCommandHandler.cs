@@ -1,13 +1,13 @@
-﻿using LogisticsSystem.Application.Common.Interfaces.Authentication;
+using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using MediatR;
 
 namespace LogisticsSystem.Application.Authentication.Commands.Logout
 {
     public sealed class LogoutCommandHandler : IRequestHandler<LogoutCommand, Unit>
     {
-        private readonly IIdentityService? _identityService;
+        private readonly IIdentityService _identityService;
 
-        public LogoutCommandHandler(IIdentityService? identityService)
+        public LogoutCommandHandler(IIdentityService identityService)
         {
             _identityService = identityService;
         }

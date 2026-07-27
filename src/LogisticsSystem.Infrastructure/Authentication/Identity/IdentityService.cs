@@ -12,11 +12,23 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 using System.Text;
 
-
 namespace LogisticsSystem.Infrastructure.Authentication.Identity
 {
     public sealed class IdentityService : IIdentityService
     {
+        private static class ErrorMessages
+        {
+            public const string UserNotFound = "User not found.";
+            public const string InvalidEmailOrPassword = "Invalid email or password.";
+            public const string AccountDeactivated = "Your account has been deactivated.";
+            public const string EmailNotConfirmed = "Please confirm your email before logging in.";
+            public const string InvalidRefreshToken = "Invalid refresh token.";
+            public const string RefreshTokenNoLongerValid = "Refresh token is no longer valid.";
+            public const string UserAccountInactive = "User account is inactive.";
+            public const string EmailAlreadyExists = "Email already exists.";
+            public const string UsernameAlreadyExists = "Username already exists.";
+        }
+
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
         private readonly IGenericRepository<Customer> _customerRepository;
@@ -56,50 +68,27 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
         public async Task ConfirmEmailAsync(string userId, string token)
         {
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user is null)
-            {
-                throw new UnauthorizedAccessException("User not found.");
-            }
+            var user = await GetUserByIdOrThrowAsync(userId, ErrorMessages.UserNotFound);
 
-            var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+            var decodedToken = DecodeToken(token);
 
             var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
 
-            if (!result.Succeeded)
-            {
-                throw new InvalidOperationException(string.Join(", ", result.Errors.Select(x => x.Description)));
-            }
+            EnsureSucceeded(result);
         }
 
         public async Task ForgotPasswordAsync(string email)
         {
             var user = await _userManager.FindByEmailAsync(email);
 
-            if (user is null)
-                return;
-
-            if (!user.EmailConfirmed)
+            if (user is null || !user.EmailConfirmed)
                 return;
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
-            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+            var resetUrl = BuildCallbackUrl(_emailOptions.ResetPasswordUrl, user.Id, token);
 
-            var resetUrl =$"{_emailOptions.ResetPasswordUrl}" + $"?userId={user.Id}&token={encodedToken}";
-
-            await _emailSender.SendEmailAsync(
-               user.Email!,
-               "Reset your password",
-               $"""
-                <h2>Password Reset</h2>
-
-                <p>Click the link below to reset your password.</p>
-
-                <a href="{resetUrl}">
-                    Reset Password
-                </a>
-                """);
+            await SendResetPasswordEmailAsync(user.Email!, resetUrl);
         }
 
         public async Task<AuthenticationResult> LoginAsync(LoginRequest request)
@@ -108,49 +97,38 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
             if (user is null)
             {
-                throw new UnauthorizedAccessException("Invalid email or password.");
+                throw new UnauthorizedAccessException(ErrorMessages.InvalidEmailOrPassword);
             }
 
             if (!user.IsActive)
             {
-                throw new UnauthorizedAccessException("Your account has been deactivated.");
+                throw new UnauthorizedAccessException(ErrorMessages.AccountDeactivated);
             }
 
             if (!user.EmailConfirmed)
             {
-                throw new UnauthorizedAccessException("Please confirm your email before logging in.");
+                throw new UnauthorizedAccessException(ErrorMessages.EmailNotConfirmed);
             }
 
             var passwordValid = await _userManager.CheckPasswordAsync(user, request.Password);
 
             if (!passwordValid)
             {
-                throw new UnauthorizedAccessException("Invalid email or password.");
+                throw new UnauthorizedAccessException(ErrorMessages.InvalidEmailOrPassword);
             }
 
             user.LastLoginAt = DateTime.UtcNow;
 
             var updateResult = await _userManager.UpdateAsync(user);
 
-            if (!updateResult.Succeeded)
-            {
-                throw new InvalidOperationException(
-                    string.Join(", ", updateResult.Errors.Select(x => x.Description)));
-            }
+            EnsureSucceeded(updateResult);
 
             return await CreateAuthenticationResultAsync(user);
         }
 
         public async Task LogoutAsync(string refreshToken)
         {
-            var specfication = new RefreshTokenByTokenSpecification(refreshToken);
-
-            var storedToken = await _refreshTokenRepository.FirstOrDefaultAsync(specfication);
-
-            if(storedToken is null)
-            {
-                throw new UnauthorizedAccessException("Invaild refresh token.");
-            }
+            var storedToken = await GetStoredRefreshTokenOrThrowAsync(refreshToken, ErrorMessages.InvalidRefreshToken);
 
             if (storedToken.IsRevoked)
                 return;
@@ -161,35 +139,27 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             _refreshTokenRepository.Update(storedToken);
 
             await _unitOfWork.SaveChangesAsync();
-            
         }
 
         public async Task<AuthenticationResult> RefreshTokenAsync(string refreshToken)
         {
-            var specification = new RefreshTokenByTokenSpecification(refreshToken);
-
-            var storedToken = await _refreshTokenRepository.FirstOrDefaultAsync(specification);
-            
-            if(storedToken is null)
-            {
-                throw new UnauthorizedAccessException("Invalid refresh token.");
-            }
+            var storedToken = await GetStoredRefreshTokenOrThrowAsync(refreshToken, ErrorMessages.InvalidRefreshToken);
 
             if (!storedToken.IsActive)
             {
-                throw new UnauthorizedAccessException("Refresh token is no longer valid.");
+                throw new UnauthorizedAccessException(ErrorMessages.RefreshTokenNoLongerValid);
             }
 
             var user = await _userManager.FindByIdAsync(storedToken.UserId.ToString());
 
             if (user is null)
             {
-                throw new UnauthorizedAccessException("User not found.");
+                throw new UnauthorizedAccessException(ErrorMessages.UserNotFound);
             }
 
             if (!user.IsActive)
             {
-                throw new UnauthorizedAccessException("User account is inactive.");
+                throw new UnauthorizedAccessException(ErrorMessages.UserAccountInactive);
             }
 
             var newRefreshToken = _refreshTokenGenerator.Generate(user.Id, _jwtOptions.RefreshTokenExpirationDays);
@@ -209,23 +179,20 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
         public async Task<AuthenticationResult> RegisterAsync(RegisterRequest request)
         {
-            // Check Email
             var existingUser = await _userManager.FindByEmailAsync(request.Email);
 
             if (existingUser is not null)
             {
-                throw new InvalidOperationException("Email already exists.");
+                throw new InvalidOperationException(ErrorMessages.EmailAlreadyExists);
             }
 
-            // Check Username
             var existingUserName = await _userManager.FindByNameAsync(request.Username);
 
             if (existingUserName is not null)
             {
-                throw new InvalidOperationException("Username already exists.");
+                throw new InvalidOperationException(ErrorMessages.UsernameAlreadyExists);
             }
 
-            // Create Identity User
             var user = new ApplicationUser
             {
                 FirstName = request.FirstName,
@@ -238,22 +205,12 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
             var createResult = await _userManager.CreateAsync(user, request.Password);
 
-            if (!createResult.Succeeded)
-            {
-                throw new InvalidOperationException(
-                    string.Join(", ", createResult.Errors.Select(e => e.Description)));
-            }
+            EnsureSucceeded(createResult);
 
-            // Assign Customer Role
             var roleResult = await _userManager.AddToRoleAsync(user, Roles.Customer);
 
-            if (!roleResult.Succeeded)
-            {
-                throw new InvalidOperationException(
-                    string.Join(", ", roleResult.Errors.Select(e => e.Description)));
-            }
+            EnsureSucceeded(roleResult);
 
-            // Create Customer Domain Entity
             var customer = new Customer
             {
                 UserId = user.Id,
@@ -266,12 +223,73 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
             var confirmationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
-            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(confirmationToken));
+            var confirmationUrl = BuildCallbackUrl(_emailOptions.ConfirmationUrl, user.Id, confirmationToken);
 
-            var confirmationUrl = $"{_emailOptions.ConfirmationUrl}?userId={user.Id}&token={encodedToken}";
+            await SendConfirmationEmailAsync(user.Email!, confirmationUrl);
 
+            return await CreateAuthenticationResultAsync(user);
+        }
+
+        public async Task ResetPasswordAsync(ResetPasswordRequest request)
+        {
+            var user = await GetUserByIdOrThrowAsync(request.UserId.ToString(), ErrorMessages.UserNotFound);
+
+            var decodedToken = DecodeToken(request.Token);
+
+            var result = await _userManager.ResetPasswordAsync(user, decodedToken, request.NewPassword);
+
+            EnsureSucceeded(result);
+        }
+
+        private async Task<ApplicationUser> GetUserByIdOrThrowAsync(string userId, string errorMessage)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is null)
+            {
+                throw new UnauthorizedAccessException(errorMessage);
+            }
+            return user;
+        }
+
+        private async Task<RefreshToken> GetStoredRefreshTokenOrThrowAsync(string refreshToken, string errorMessage)
+        {
+            var specification = new RefreshTokenByTokenSpecification(refreshToken);
+            var storedToken = await _refreshTokenRepository.FirstOrDefaultAsync(specification);
+            if (storedToken is null)
+            {
+                throw new UnauthorizedAccessException(errorMessage);
+            }
+            return storedToken;
+        }
+
+        private static string DecodeToken(string token)
+        {
+            return Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+        }
+
+        private static string EncodeToken(string token)
+        {
+            return WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+        }
+
+        private string BuildCallbackUrl(string baseUrl, Guid userId, string token)
+        {
+            var encodedToken = EncodeToken(token);
+            return $"{baseUrl}?userId={userId}&token={encodedToken}";
+        }
+
+        private static void EnsureSucceeded(IdentityResult result)
+        {
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException(string.Join(", ", result.Errors.Select(x => x.Description)));
+            }
+        }
+
+        private async Task SendConfirmationEmailAsync(string email, string confirmationUrl)
+        {
             await _emailSender.SendEmailAsync(
-                user.Email!,
+                email,
                 "Confirm your email",
                 $"""
                 <h2>Welcome to Logistics System</h2>
@@ -282,27 +300,22 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
                     Confirm Email
                 </a>
                 """);
-
-            return await CreateAuthenticationResultAsync(user);
         }
-        public async Task ResetPasswordAsync(ResetPasswordRequest request)
+
+        private async Task SendResetPasswordEmailAsync(string email, string resetUrl)
         {
-            var user = await _userManager.FindByIdAsync(request.UserId.ToString());
+            await _emailSender.SendEmailAsync(
+                email,
+                "Reset your password",
+                $"""
+                <h2>Password Reset</h2>
 
-            if (user is null)
-            {
-                throw new UnauthorizedAccessException("User not found.");
-            }
+                <p>Click the link below to reset your password.</p>
 
-            var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(request.Token));
-
-            var result = await _userManager.ResetPasswordAsync(user, decodedToken, request.NewPassword);
-
-            if (!result.Succeeded)
-            {
-                throw new InvalidOperationException(
-                    string.Join(", ", result.Errors.Select(x => x.Description)));
-            }
+                <a href="{resetUrl}">
+                    Reset Password
+                </a>
+                """);
         }
 
         private async Task<AuthenticationResult> CreateAuthenticationResultAsync(ApplicationUser user, RefreshToken? refreshToken = null)
@@ -335,6 +348,7 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
                 EmailConfirmed = user.EmailConfirmed
             };
         }
+
         private async Task<RefreshToken> CreateRefreshTokenAsync(ApplicationUser user)
         {
             var refreshToken = _refreshTokenGenerator.Generate(
@@ -347,6 +361,5 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
             return refreshToken;
         }
-
     }
 }
