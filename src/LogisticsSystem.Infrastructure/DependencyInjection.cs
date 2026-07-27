@@ -1,5 +1,6 @@
 using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Infrastructure.Authentication.Authorization;
 using LogisticsSystem.Infrastructure.Authentication.Email;
 using LogisticsSystem.Infrastructure.Authentication.Identity;
 using LogisticsSystem.Infrastructure.Authentication.Jwt;
@@ -94,7 +95,7 @@ namespace LogisticsSystem.Infrastructure
                     };
                 });
 
-            services.AddAuthorization();
+            services.AddApplicationAuthorization();
 
             services.AddScoped<Persistence.Seed.DbInitializer>();
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();

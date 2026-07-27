@@ -1,12 +1,12 @@
-﻿using LogisticsSystem.Application.Features.Shipments.Commands.CreateShipment;
+﻿using LogisticsSystem.Application.Authorization;
+using LogisticsSystem.Application.Features.Shipments.Commands.CreateShipment;
 using LogisticsSystem.Application.Features.Shipments.Commands.DeleteShipment;
 using LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetAllShipments;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetShipmentById;
 using MediatR;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Runtime.CompilerServices;
 
 namespace LogisticsSystem.Api.Controllers
 {
@@ -21,6 +21,7 @@ namespace LogisticsSystem.Api.Controllers
             _sender = sender;
         }
 
+        [Authorize(Policy = Policies.ShipmentCreate)]
         [HttpPost]
         public async Task<IActionResult> Create(CreateShipmentCommand command, CancellationToken cancellationToken)
         {
@@ -29,13 +30,15 @@ namespace LogisticsSystem.Api.Controllers
             return CreatedAtAction(nameof(GetById), new { id }, null);
         }
 
+        [Authorize(Policy = Policies.ShipmentView)]
         [HttpGet("{id:Guid}")]
-        public async Task<IActionResult> GetById(Guid id,CancellationToken cancellationToken)
+        public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
         {
             var shipment = await _sender.Send(new GetShipmentByIdQuery(id), cancellationToken);
             return Ok(shipment);
         }
 
+        [Authorize(Policy = Policies.ShipmentViewAll)]
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] GetAllShipmentsQuery query, CancellationToken cancellationToken)
         {
@@ -43,6 +46,7 @@ namespace LogisticsSystem.Api.Controllers
             return Ok(result);
         }
 
+        [Authorize(Policy = Policies.ShipmentUpdate)]
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> Update(Guid id, UpdateShipmentCommand command, CancellationToken cancellationToken)
         {
@@ -54,6 +58,7 @@ namespace LogisticsSystem.Api.Controllers
             return NoContent();
         }
 
+        [Authorize(Policy = Policies.ShipmentDelete)]
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
         {
