@@ -4,6 +4,7 @@ using LogisticsSystem.Application.Authentication.Commands.Login;
 using LogisticsSystem.Application.Authentication.Commands.Logout;
 using LogisticsSystem.Application.Authentication.Commands.RefreshToken;
 using LogisticsSystem.Application.Authentication.Commands.Register;
+using LogisticsSystem.Application.Authentication.Commands.ResetPassword;
 using LogisticsSystem.Application.Common.Models.Authentication;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -79,6 +80,17 @@ namespace LogisticsSystem.Api.Controllers
             return Ok(new
             {
                 Message = "If the email exists, a password reset link has been sent."
+            });
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPasswordCommand command)
+        {
+            await _sender.Send(command);
+
+            return Ok(new
+            {
+                Message = "Password reset successfully."
             });
         }
     }

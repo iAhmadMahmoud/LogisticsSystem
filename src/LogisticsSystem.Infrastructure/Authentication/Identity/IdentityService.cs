@@ -285,9 +285,24 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
             return await CreateAuthenticationResultAsync(user);
         }
-        public Task ResetPasswordAsync(ResetPasswordRequest request)
+        public async Task ResetPasswordAsync(ResetPasswordRequest request)
         {
-            throw new NotImplementedException();
+            var user = await _userManager.FindByIdAsync(request.UserId.ToString());
+
+            if (user is null)
+            {
+                throw new UnauthorizedAccessException("User not found.");
+            }
+
+            var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(request.Token));
+
+            var result = await _userManager.ResetPasswordAsync(user, decodedToken, request.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    string.Join(", ", result.Errors.Select(x => x.Description)));
+            }
         }
 
         private async Task<AuthenticationResult> CreateAuthenticationResultAsync(ApplicationUser user, RefreshToken? refreshToken = null)
