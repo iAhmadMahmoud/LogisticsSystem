@@ -1,3 +1,4 @@
+using LogisticsSystem.Application.Authentication.Commands.ConfirmEmail;
 using LogisticsSystem.Application.Authentication.Commands.Login;
 using LogisticsSystem.Application.Authentication.Commands.Logout;
 using LogisticsSystem.Application.Authentication.Commands.RefreshToken;
@@ -53,6 +54,20 @@ namespace LogisticsSystem.Api.Controllers
             await _sender.Send(command);
 
             return NoContent();
+        }
+
+        [HttpGet("confirm-email")]
+        public async Task<IActionResult> ConfirmEmail(
+            [FromQuery] Guid userId,
+            [FromQuery] string token)
+        {
+            await _sender.Send(
+                new ConfirmEmailCommand(userId, token));
+
+            return Ok(new
+            {
+                Message = "Email confirmed successfully."
+            });
         }
     }
 }

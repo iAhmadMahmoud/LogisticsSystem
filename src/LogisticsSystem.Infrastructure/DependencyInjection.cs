@@ -1,5 +1,6 @@
 using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Infrastructure.Authentication.Email;
 using LogisticsSystem.Infrastructure.Authentication.Identity;
 using LogisticsSystem.Infrastructure.Authentication.Jwt;
 using LogisticsSystem.Infrastructure.Authentication.Tokens;
@@ -51,7 +52,7 @@ namespace LogisticsSystem.Infrastructure
 
                 options.User.RequireUniqueEmail = true;
 
-                options.SignIn.RequireConfirmedEmail = false;
+                options.SignIn.RequireConfirmedEmail = true;
 
                 options.Lockout.AllowedForNewUsers = true;
                 options.Lockout.MaxFailedAccessAttempts = 5;
@@ -59,11 +60,13 @@ namespace LogisticsSystem.Infrastructure
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddSignInManager();
+            .AddSignInManager()
+            .AddDefaultTokenProviders();
 
             services.AddHttpContextAccessor();
 
             services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
+            services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
 
             services.AddAuthentication(options =>
                 {
@@ -97,6 +100,7 @@ namespace LogisticsSystem.Infrastructure
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
             services.AddScoped<IIdentityService, IdentityService>();
+            services.AddScoped<IEmailSender, EmailSender>();
 
             return services;
         }

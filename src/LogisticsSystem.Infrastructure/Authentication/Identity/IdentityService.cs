@@ -4,10 +4,13 @@ using LogisticsSystem.Application.Common.Models.Authentication;
 using LogisticsSystem.Application.Specifications;
 using LogisticsSystem.Domain.Constants;
 using LogisticsSystem.Domain.Entities;
+using LogisticsSystem.Infrastructure.Authentication.Email;
 using LogisticsSystem.Infrastructure.Authentication.Jwt;
 using LogisticsSystem.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
+using System.Text;
 
 
 namespace LogisticsSystem.Infrastructure.Authentication.Identity
@@ -21,6 +24,8 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
         private readonly IUnitOfWork _unitOfWork;
         private readonly JwtOptions _jwtOptions;
         private readonly IRefreshTokenGenerator _refreshTokenGenerator;
+        private readonly IEmailSender _emailSender;
+        private readonly EmailOptions _emailOptions;
 
         public IdentityService(
             UserManager<ApplicationUser> userManager,
@@ -29,7 +34,9 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             IOptions<JwtOptions> jwtOptions,
             IGenericRepository<Customer> customerRepository,
             IRefreshTokenGenerator refreshTokenGenerator,
-            IGenericRepository<RefreshToken> refreshTokenRepository)
+            IGenericRepository<RefreshToken> refreshTokenRepository,
+            IEmailSender emailSender,
+            IOptions<EmailOptions> emailOptions)
         {
             _userManager = userManager;
             _jwtTokenGenerator = jwtTokenGenerator;
@@ -38,6 +45,8 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             _customerRepository = customerRepository;
             _refreshTokenGenerator = refreshTokenGenerator;
             _refreshTokenRepository = refreshTokenRepository;
+            _emailSender = emailSender;
+            _emailOptions = emailOptions.Value;
         }
 
         public Task ChangePasswordAsync(ChangePasswordRequest request)
@@ -45,9 +54,22 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             throw new NotImplementedException();
         }
 
-        public Task ConfirmEmailAsync(string userId, string token)
+        public async Task ConfirmEmailAsync(string userId, string token)
         {
-            throw new NotImplementedException();
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user is null)
+            {
+                throw new UnauthorizedAccessException("User not found.");
+            }
+
+            var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+
+            var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
+
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException(string.Join(", ", result.Errors.Select(x => x.Description)));
+            }
         }
 
         public Task ForgotPasswordAsync(string email)
@@ -216,6 +238,25 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             await _customerRepository.AddAsync(customer);
 
             await _unitOfWork.SaveChangesAsync();
+
+            var confirmationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(confirmationToken));
+
+            var confirmationUrl = $"{_emailOptions.ConfirmationUrl}?userId={user.Id}&token={encodedToken}";
+
+            await _emailSender.SendEmailAsync(
+                user.Email!,
+                "Confirm your email",
+                $"""
+                <h2>Welcome to Logistics System</h2>
+
+                <p>Please confirm your email by clicking the link below.</p>
+
+                <a href="{confirmationUrl}">
+                    Confirm Email
+                </a>
+                """);
 
             return await CreateAuthenticationResultAsync(user);
         }
