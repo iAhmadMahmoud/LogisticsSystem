@@ -12,5 +12,6 @@ namespace LogisticsSystem.Domain.Entities
         public DateTime? RevokedAt { get; set; }
         public string? ReplacedByToken { get; set; }
         public bool IsExpired => DateTime.UtcNow >= ExpiresAt;
+        public bool IsActive => !IsRevoked && !IsExpired;
     }
 }

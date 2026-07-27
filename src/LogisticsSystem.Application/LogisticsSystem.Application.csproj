@@ -11,7 +11,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Authentication\" />
+    <Folder Include="Authentication\DTOs\" />
+    <Folder Include="Authentication\Interfaces\" />
+    <Folder Include="Authentication\Models\" />
+    <Folder Include="Authentication\Responses\" />
+    <Folder Include="Authentication\Validators\" />
     <Folder Include="Common\Mappings\" />
     <Folder Include="Common\Specifications\" />
     <Folder Include="Features\Customers\" />

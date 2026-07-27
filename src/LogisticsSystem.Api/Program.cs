@@ -1,6 +1,7 @@
 using LogisticsSystem.Api.Common.Extensions;
 using LogisticsSystem.Application;
 using LogisticsSystem.Infrastructure;
+using Microsoft.OpenApi;
 
 namespace LogisticsSystem.Api;
 
@@ -13,7 +14,29 @@ public class Program
         builder.Services.AddControllers();
 
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
+        builder.Services.AddSwaggerGen(options =>
+        {
+            options.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Title = "Logistics System API",
+                Version = "v1"
+            });
+
+            options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+            {
+                Description = "JWT Authorization header using the Bearer scheme.",
+                Name = "Authorization",
+                In = ParameterLocation.Header,
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT"
+            });
+
+            options.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
+            {
+                [new OpenApiSecuritySchemeReference("Bearer")] = new List<string>()
+            });
+        });
 
         builder.Services.AddApplication();
         builder.Services.AddInfrastructure(builder.Configuration);

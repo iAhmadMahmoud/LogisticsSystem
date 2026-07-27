@@ -14,6 +14,9 @@ namespace LogisticsSystem.Infrastructure.Persistence.Configurations
 
             builder.ToTable("RefreshTokens");
 
+            builder.Property(x => x.UserId)
+                .IsRequired();
+
             builder.Property(x=>x.Token)
                 .HasMaxLength(500)
                 .IsRequired();

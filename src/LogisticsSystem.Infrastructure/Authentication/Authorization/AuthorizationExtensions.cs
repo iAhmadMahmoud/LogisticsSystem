@@ -1,0 +1,84 @@
+﻿using LogisticsSystem.Application.Authorization;
+using LogisticsSystem.Domain.Constants;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace LogisticsSystem.Infrastructure.Authentication.Authorization
+{
+    public static class AuthorizationExtensions
+    {
+        public static IServiceCollection AddApplicationAuthorization(this IServiceCollection services)
+        {
+            services.AddAuthorization(options =>
+            {
+                // Shipments
+                options.AddPolicy(
+                    Policies.ShipmentCreate,
+                    policy => policy.RequireRole(
+                        Roles.Customer,
+                        Roles.Dispatcher,
+                        Roles.Admin));
+
+                options.AddPolicy(
+                    Policies.ShipmentView,
+                    policy => policy.RequireAuthenticatedUser());
+
+                options.AddPolicy(
+                    Policies.ShipmentViewAll,
+                    policy => policy.RequireRole(
+                        Roles.Dispatcher,
+                        Roles.Admin));
+
+                options.AddPolicy(
+                    Policies.ShipmentUpdate,
+                    policy => policy.RequireRole(
+                        Roles.Dispatcher,
+                        Roles.Admin));
+
+                options.AddPolicy(
+                    Policies.ShipmentDelete,
+                    policy => policy.RequireRole(
+                        Roles.Admin));
+
+                // Drivers
+
+                options.AddPolicy(
+                    Policies.DriverManage,
+                    policy => policy.RequireRole(
+                        Roles.Dispatcher,
+                        Roles.Admin));
+
+                // Dispatch
+
+                options.AddPolicy(
+                    Policies.DispatchAssignDriver,
+                    policy => policy.RequireRole(
+                        Roles.Dispatcher,
+                        Roles.Admin));
+
+                options.AddPolicy(
+                    Policies.DispatchManage,
+                    policy => policy.RequireRole(
+                        Roles.Dispatcher,
+                        Roles.Admin));
+
+                // Users
+
+                options.AddPolicy(
+                    Policies.UserManage,
+                    policy => policy.RequireRole(
+                        Roles.Admin));
+
+                // Dashboard
+
+                options.AddPolicy(
+                    Policies.DashboardView,
+                    policy => policy.RequireRole(
+                        Roles.Dispatcher,
+                        Roles.Admin));
+            });
+
+            return services;
+        }
+
+    }
+}
