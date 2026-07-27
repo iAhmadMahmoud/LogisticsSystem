@@ -1,3 +1,4 @@
+using LogisticsSystem.Application.Authentication.Commands.ChangePassword;
 using LogisticsSystem.Application.Authentication.Commands.ConfirmEmail;
 using LogisticsSystem.Application.Authentication.Commands.ForgotPassword;
 using LogisticsSystem.Application.Authentication.Commands.Login;
@@ -7,6 +8,7 @@ using LogisticsSystem.Application.Authentication.Commands.Register;
 using LogisticsSystem.Application.Authentication.Commands.ResetPassword;
 using LogisticsSystem.Application.Common.Models.Authentication;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LogisticsSystem.Api.Controllers
@@ -91,6 +93,18 @@ namespace LogisticsSystem.Api.Controllers
             return Ok(new
             {
                 Message = "Password reset successfully."
+            });
+        }
+
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword(ChangePasswordCommand command)
+        {
+            await _sender.Send(command);
+
+            return Ok(new
+            {
+                Message = "Password changed successfully."
             });
         }
     }

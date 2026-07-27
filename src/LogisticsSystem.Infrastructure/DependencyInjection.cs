@@ -102,6 +102,7 @@ namespace LogisticsSystem.Infrastructure
             services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
             services.AddScoped<IIdentityService, IdentityService>();
             services.AddScoped<IEmailSender, EmailSender>();
+            services.AddScoped<ICurrentUserService, CurrentUserService>();
 
             return services;
         }

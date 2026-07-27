@@ -38,6 +38,7 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
         private readonly IRefreshTokenGenerator _refreshTokenGenerator;
         private readonly IEmailSender _emailSender;
         private readonly EmailOptions _emailOptions;
+        private readonly ICurrentUserService _currentUserService;
 
         public IdentityService(
             UserManager<ApplicationUser> userManager,
@@ -48,7 +49,8 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             IRefreshTokenGenerator refreshTokenGenerator,
             IGenericRepository<RefreshToken> refreshTokenRepository,
             IEmailSender emailSender,
-            IOptions<EmailOptions> emailOptions)
+            IOptions<EmailOptions> emailOptions,
+            ICurrentUserService currentUserService)
         {
             _userManager = userManager;
             _jwtTokenGenerator = jwtTokenGenerator;
@@ -59,11 +61,38 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             _refreshTokenRepository = refreshTokenRepository;
             _emailSender = emailSender;
             _emailOptions = emailOptions.Value;
+            _currentUserService = currentUserService;
         }
 
-        public Task ChangePasswordAsync(ChangePasswordRequest request)
+        public async Task ChangePasswordAsync(ChangePasswordRequest request)
         {
-            throw new NotImplementedException();
+            var userId = _currentUserService.UserId;
+
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+
+            if (user is null)
+            {
+                throw new UnauthorizedAccessException("User not found.");
+            }
+
+            var result = await _userManager.ChangePasswordAsync(
+                user,
+                request.CurrentPassword,
+                request.NewPassword);
+
+            EnsureSucceeded(result);
+
+            var specification = new ActiveRefreshTokensByUserSpecification(user.Id);
+
+            var refreshTokens = await _refreshTokenRepository.ListAsync(specification);
+
+            foreach (var token in refreshTokens)
+            {
+                token.IsRevoked = true;
+                token.RevokedAt = DateTime.UtcNow;
+            }
+
+            await _unitOfWork.SaveChangesAsync();
         }
 
         public async Task ConfirmEmailAsync(string userId, string token)
