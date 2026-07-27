@@ -72,9 +72,34 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             }
         }
 
-        public Task ForgotPasswordAsync(string email)
+        public async Task ForgotPasswordAsync(string email)
         {
-            throw new NotImplementedException();
+            var user = await _userManager.FindByEmailAsync(email);
+
+            if (user is null)
+                return;
+
+            if (!user.EmailConfirmed)
+                return;
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+
+            var resetUrl =$"{_emailOptions.ResetPasswordUrl}" + $"?userId={user.Id}&token={encodedToken}";
+
+            await _emailSender.SendEmailAsync(
+               user.Email!,
+               "Reset your password",
+               $"""
+                <h2>Password Reset</h2>
+
+                <p>Click the link below to reset your password.</p>
+
+                <a href="{resetUrl}">
+                    Reset Password
+                </a>
+                """);
         }
 
         public async Task<AuthenticationResult> LoginAsync(LoginRequest request)

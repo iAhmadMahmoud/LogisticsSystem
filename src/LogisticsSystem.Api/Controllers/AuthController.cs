@@ -1,4 +1,5 @@
 using LogisticsSystem.Application.Authentication.Commands.ConfirmEmail;
+using LogisticsSystem.Application.Authentication.Commands.ForgotPassword;
 using LogisticsSystem.Application.Authentication.Commands.Login;
 using LogisticsSystem.Application.Authentication.Commands.Logout;
 using LogisticsSystem.Application.Authentication.Commands.RefreshToken;
@@ -67,6 +68,17 @@ namespace LogisticsSystem.Api.Controllers
             return Ok(new
             {
                 Message = "Email confirmed successfully."
+            });
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordCommand command)
+        {
+            await _sender.Send(command);
+
+            return Ok(new
+            {
+                Message = "If the email exists, a password reset link has been sent."
             });
         }
     }
