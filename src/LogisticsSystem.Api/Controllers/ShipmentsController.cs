@@ -4,6 +4,7 @@ using LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver;
 using LogisticsSystem.Application.Features.Shipments.Commands.CreateShipment;
 using LogisticsSystem.Application.Features.Shipments.Commands.DeleteShipment;
 using LogisticsSystem.Application.Features.Shipments.Commands.PickupShipment;
+using LogisticsSystem.Application.Features.Shipments.Commands.StartTransit;
 using LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetAllShipments;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetShipmentById;
@@ -78,9 +79,7 @@ namespace LogisticsSystem.Api.Controllers
             AssignDriverRequest request,
             CancellationToken cancellationToken)
         {
-            await _sender.Send(
-                new AssignDriverCommand(id, request.DriverId),
-                cancellationToken);
+            await _sender.Send(new AssignDriverCommand(id, request.DriverId), cancellationToken);
 
             return NoContent();
         }
@@ -92,9 +91,18 @@ namespace LogisticsSystem.Api.Controllers
             Guid id,
             CancellationToken cancellationToken)
         {
-            await _sender.Send(
-                new PickupShipmentCommand(id),
-                cancellationToken);
+            await _sender.Send(new PickupShipmentCommand(id), cancellationToken);
+
+            return NoContent();
+        }
+
+        [Authorize(Policy = Policies.DriverUpdateStatus)]
+        [HttpPost("{id:guid}/start-transit")]
+        public async Task<IActionResult> StartTransit(
+           Guid id,
+           CancellationToken cancellationToken)
+        {
+            await _sender.Send(new StartTransitCommand(id), cancellationToken);
 
             return NoContent();
         }
