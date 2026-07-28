@@ -15,7 +15,13 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment
         private readonly ICurrentUserService _currentUserService;
 
 
-        public UpdateShipmentCommandHandler(IGenericRepository<Shipment> shipmentRepository, IUnitOfWork unitOfWork, IGenericRepository<Customer> customerRepository, ICurrentUserService currentUserService)
+        public UpdateShipmentCommandHandler
+            (
+                IGenericRepository<Shipment> shipmentRepository,
+                IUnitOfWork unitOfWork, 
+                IGenericRepository<Customer> customerRepository,
+                ICurrentUserService currentUserService
+            )
         {
             _shipmentRepository = shipmentRepository;
             _unitOfWork = unitOfWork;

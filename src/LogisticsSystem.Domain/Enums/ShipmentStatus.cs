@@ -3,14 +3,11 @@
     public enum ShipmentStatus
     {
         Pending,
-        watingForDriver,
-        DriverReserved,
         Assigned,
         PickedUp,
-        InTranasit,
+        InTransit,
         Delivered,
-        Completed,
         Cancelled,
-        Faild
+        Failed
     }
 }

@@ -1,6 +1,9 @@
-﻿using LogisticsSystem.Application.Authorization;
+﻿using LogisticsSystem.Api.Contracts.Shipments;
+using LogisticsSystem.Application.Authorization;
+using LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver;
 using LogisticsSystem.Application.Features.Shipments.Commands.CreateShipment;
 using LogisticsSystem.Application.Features.Shipments.Commands.DeleteShipment;
+using LogisticsSystem.Application.Features.Shipments.Commands.PickupShipment;
 using LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetAllShipments;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetShipmentById;
@@ -63,6 +66,35 @@ namespace LogisticsSystem.Api.Controllers
         public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
         {
             await _sender.Send(new DeleteShipmentCommand(id), cancellationToken);
+
+            return NoContent();
+        }
+
+
+        [Authorize(Policy = Policies.DispatchAssignDriver)]
+        [HttpPost("{id:guid}/assign-driver")]
+        public async Task<IActionResult> AssignDriver(
+            Guid id,
+            AssignDriverRequest request,
+            CancellationToken cancellationToken)
+        {
+            await _sender.Send(
+                new AssignDriverCommand(id, request.DriverId),
+                cancellationToken);
+
+            return NoContent();
+        }
+
+
+        [Authorize(Policy = Policies.DriverUpdateStatus)]
+        [HttpPost("{id:guid}/pickup")]
+        public async Task<IActionResult> Pickup(
+            Guid id,
+            CancellationToken cancellationToken)
+        {
+            await _sender.Send(
+                new PickupShipmentCommand(id),
+                cancellationToken);
 
             return NoContent();
         }
