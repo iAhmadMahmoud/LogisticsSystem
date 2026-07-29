@@ -3,6 +3,7 @@ using LogisticsSystem.Application.Authorization;
 using LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver;
 using LogisticsSystem.Application.Features.Shipments.Commands.CreateShipment;
 using LogisticsSystem.Application.Features.Shipments.Commands.DeleteShipment;
+using LogisticsSystem.Application.Features.Shipments.Commands.DeliverShipment;
 using LogisticsSystem.Application.Features.Shipments.Commands.PickupShipment;
 using LogisticsSystem.Application.Features.Shipments.Commands.StartTransit;
 using LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment;
@@ -103,6 +104,17 @@ namespace LogisticsSystem.Api.Controllers
            CancellationToken cancellationToken)
         {
             await _sender.Send(new StartTransitCommand(id), cancellationToken);
+
+            return NoContent();
+        }
+
+        [Authorize(Policy = Policies.DriverUpdateStatus)]
+        [HttpPost("{id:guid}/deliver")]
+        public async Task<IActionResult> Deliver(
+            Guid id,
+            CancellationToken cancellationToken)
+        {
+            await _sender.Send(new DeliverShipmentCommand(id), cancellationToken);
 
             return NoContent();
         }
