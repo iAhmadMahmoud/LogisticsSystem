@@ -18,10 +18,22 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
         {
             get
             {
-                var value = _httpContextAccessor.HttpContext?.User
-                    .FindFirstValue(JwtRegisteredClaimNames.Sub);
+                var userIdValue =
+                    _httpContextAccessor.HttpContext?
+                        .User
+                        .FindFirstValue(ClaimTypes.NameIdentifier)
+                    ??
+                    _httpContextAccessor.HttpContext?
+                        .User
+                        .FindFirstValue("sub");
 
-                return Guid.TryParse(value, out var id) ? id : Guid.Empty;
+                if (!Guid.TryParse(userIdValue, out var userId))
+                {
+                    throw new UnauthorizedAccessException(
+                        "Authenticated user ID is missing or invalid.");
+                }
+
+                return userId;
             }
         }
     }
