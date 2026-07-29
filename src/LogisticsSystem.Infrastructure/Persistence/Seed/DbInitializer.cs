@@ -56,6 +56,9 @@ namespace LogisticsSystem.Infrastructure.Persistence.Seed
             // Seed Admin User
             var adminUser = await SeedUserAsync("admin@logistics.com", "Admin@123", "Admin", "User", Roles.Admin);
 
+            // Seed Dispatcher User
+            await SeedUserAsync("dispatcher@logistics.com", "Dispatcher@123", "Dispatcher", "User", Roles.Dispatcher);
+
             // Seed Customer User & Entity
             var customerUser = await SeedUserAsync("customer@logistics.com", "Customer@123", "Customer", "User", Roles.Customer);
             if (customerUser != null)
