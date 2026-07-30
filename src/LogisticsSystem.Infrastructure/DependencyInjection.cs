@@ -9,6 +9,7 @@ using LogisticsSystem.Infrastructure.Identity;
 using LogisticsSystem.Infrastructure.Persistence;
 using LogisticsSystem.Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -93,6 +94,44 @@ namespace LogisticsSystem.Infrastructure
 
                         ClockSkew = TimeSpan.Zero
                     };
+
+                    // ── TEMPORARY DIAGNOSTICS ── remove after root cause is confirmed ──
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnAuthenticationFailed = context =>
+                        {
+                            var logger = context.HttpContext.RequestServices
+                                .GetRequiredService<ILoggerFactory>()
+                                .CreateLogger("JwtDiagnostics");
+                            logger.LogError(
+                                "[JwtDiagnostics] Authentication failed: {ExceptionType}: {Message}",
+                                context.Exception.GetType().Name,
+                                context.Exception.Message);
+                            return Task.CompletedTask;
+                        },
+                        OnChallenge = context =>
+                        {
+                            var logger = context.HttpContext.RequestServices
+                                .GetRequiredService<ILoggerFactory>()
+                                .CreateLogger("JwtDiagnostics");
+                            logger.LogWarning(
+                                "[JwtDiagnostics] OnChallenge fired — Error: {Error}, ErrorDescription: {ErrorDescription}",
+                                context.Error,
+                                context.ErrorDescription);
+                            return Task.CompletedTask;
+                        },
+                        OnTokenValidated = context =>
+                        {
+                            var logger = context.HttpContext.RequestServices
+                                .GetRequiredService<ILoggerFactory>()
+                                .CreateLogger("JwtDiagnostics");
+                            logger.LogInformation(
+                                "[JwtDiagnostics] Token validated successfully for principal: {Name}",
+                                context.Principal?.Identity?.Name ?? "(unknown)");
+                            return Task.CompletedTask;
+                        }
+                    };
+                    // ── END TEMPORARY DIAGNOSTICS ──
                 });
 
             services.AddApplicationAuthorization();

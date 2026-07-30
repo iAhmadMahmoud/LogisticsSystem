@@ -12,6 +12,11 @@ namespace LogisticsSystem.Application.Features.Shipments.DTOs
         public decimal ShippingCost { get; init; }
         public ShipmentPriority Priority { get; init; }
         public ShipmentStatus Status { get; init; }
+        public Guid? DriverId { get; set; }
+
+        public DateTime? AssignedAt { get; set; }
         public DateTime ScheduledAt { get; init; }
+
+
     }
 }

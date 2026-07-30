@@ -4,7 +4,6 @@ namespace LogisticsSystem.Application.Features.Shipments.DTOs
 {
     public class CreateShipmentDto
     {
-        public Guid CustomerId { get; set; }
 
         public string PickupAddress { get; set; } = string.Empty;
 

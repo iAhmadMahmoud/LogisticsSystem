@@ -6,8 +6,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CreateShipment
     {
         public CreateShipmentCommandValidator()
         {
-            RuleFor(x=>x.Shipment.CustomerId)
-                .NotEmpty();
+        
 
             RuleFor(x => x.Shipment.PickupAddress)
                 .NotEmpty()

@@ -1,4 +1,7 @@
-﻿using LogisticsSystem.Application.Common.Interfaces.Persistence;
+﻿using LogisticsSystem.Application.Common.Interfaces.Authentication;
+using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Application.Features.Customers.Specifications;
+using LogisticsSystem.Application.Features.Shipments.Specifications;
 using LogisticsSystem.Domain.Entities;
 using MediatR;
 
@@ -6,22 +9,40 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment
 {
     public class UpdateShipmentCommandHandler : IRequestHandler<UpdateShipmentCommand>
     {
-        private readonly IGenericRepository<Shipment> _repository;
+        private readonly IGenericRepository<Shipment> _shipmentRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IGenericRepository<Customer> _customerRepository;
+        private readonly ICurrentUserService _currentUserService;
 
-        public UpdateShipmentCommandHandler(IGenericRepository<Shipment> repository, IUnitOfWork unitOfWork)
+
+        public UpdateShipmentCommandHandler
+            (
+                IGenericRepository<Shipment> shipmentRepository,
+                IUnitOfWork unitOfWork, 
+                IGenericRepository<Customer> customerRepository,
+                ICurrentUserService currentUserService
+            )
         {
-            _repository = repository;
+            _shipmentRepository = shipmentRepository;
             _unitOfWork = unitOfWork;
+            _customerRepository = customerRepository;
+            _currentUserService = currentUserService;
         }
 
         public async Task Handle(UpdateShipmentCommand request, CancellationToken cancellationToken)
         {
             var dto = request.Shipment;
 
-            var shipment = await _repository.GetByIdAsync(
-                dto.Id,
-                cancellationToken);
+            
+
+            var customer = await _customerRepository.FirstOrDefaultAsync(new CustomerByUserIdSpecification(_currentUserService.UserId));
+
+            if(customer is null)
+            {
+                throw new UnauthorizedAccessException("Customer profile not found.");
+            }
+
+            var shipment = await _shipmentRepository.FirstOrDefaultAsync(new ShipmentByIdAndCustomerSpecification(request.Shipment.Id,customer.Id));
 
             if (shipment is null)
                 throw new KeyNotFoundException("Shipment not found.");
@@ -43,7 +64,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment
             shipment.ScheduledAt = dto.ScheduledAt;
             shipment.Notes = dto.Notes;
 
-            _repository.Update(shipment);
+            _shipmentRepository.Update(shipment);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
