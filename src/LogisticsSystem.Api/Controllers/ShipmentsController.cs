@@ -11,6 +11,7 @@ using LogisticsSystem.Application.Features.Shipments.Commands.StartTransit;
 using LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetAllShipments;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetShipmentById;
+using LogisticsSystem.Application.Features.ShipmentTrackings.Commands.AddShipmentLocation;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -128,6 +129,18 @@ namespace LogisticsSystem.Api.Controllers
         public async Task<IActionResult> Fail(Guid id, CancellationToken cancellationToken)
         {
             await _sender.Send(new FailShipmentCommand(id), cancellationToken);
+
+            return NoContent();
+        }
+
+
+        [Authorize(Policy = Policies.DriverUpdateStatus)]
+        [HttpPost("{shipmentId:guid}/location")]
+        public async Task<IActionResult> AddLocation(Guid shipmentId, AddShipmentLocationRequest request, CancellationToken cancellationToken)
+        {
+            var command = new AddShipmentLocationCommand(shipmentId, request.Latitude, request.Longitude);
+
+            await _sender.Send(command, cancellationToken);
 
             return NoContent();
         }
