@@ -1,6 +1,7 @@
 ﻿using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Domain.Entities;
+using LogisticsSystem.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -47,6 +48,12 @@ namespace LogisticsSystem.Application.Features.ShipmentTrackings.Commands.AddShi
             if (shipment.DriverId != driver.Id)
             {
                 throw new UnauthorizedAccessException("You are not assigned to this shipment.");
+            }
+
+            if (shipment.Status != ShipmentStatus.InTransit)
+            {
+                throw new InvalidOperationException(
+                    "Location tracking is only allowed when the shipment is in transit.");
             }
 
             var tracking = new ShipmentTracking
