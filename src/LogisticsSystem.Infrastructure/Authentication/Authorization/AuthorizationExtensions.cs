@@ -40,6 +40,20 @@ namespace LogisticsSystem.Infrastructure.Authentication.Authorization
                         Roles.Admin));
 
                 // Drivers
+                options.AddPolicy(
+                    Policies.DriverView,
+                    policy => policy.RequireAuthenticatedUser());
+
+                options.AddPolicy(
+                    Policies.DriverViewAll,
+                    policy => policy.RequireRole(
+                        Roles.Dispatcher,
+                        Roles.Admin));
+
+                options.AddPolicy(
+                    Policies.DriverUpdateStatus,
+                    policy => policy.RequireRole(
+                        Roles.Driver));
 
                 options.AddPolicy(
                     Policies.DriverManage,

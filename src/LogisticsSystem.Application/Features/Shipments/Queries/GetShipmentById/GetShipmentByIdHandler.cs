@@ -4,6 +4,7 @@ using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Features.Customers.Specifications;
 using LogisticsSystem.Application.Features.Shipments.DTOs;
 using LogisticsSystem.Application.Features.Shipments.Specifications;
+using LogisticsSystem.Domain.Constants;
 using LogisticsSystem.Domain.Entities;
 using MediatR;
 
@@ -32,28 +33,30 @@ namespace LogisticsSystem.Application.Features.Shipments.Queries.GetShipmentById
 
         public async Task<ShipmentDto> Handle(GetShipmentByIdQuery request, CancellationToken cancellationToken)
         {
-           
-            var customer = await _customerRepository.FirstOrDefaultAsync(new CustomerByUserIdSpecification(_currentUserService.UserId));
+            Shipment? shipment;
 
-            if (customer is null)
+            if (_currentUserService.IsInRole(Roles.Customer))
             {
-                throw new UnauthorizedAccessException("Customer profile not found.");
-            }
+                var customer = await _customerRepository.FirstOrDefaultAsync(new CustomerByUserIdSpecification(_currentUserService.UserId));
 
-            var shipment = await _shipmentRepository.FirstOrDefaultAsync(
-                new ShipmentByIdAndCustomerSpecification(
-                    request.Id,
-                    customer.Id));
+                if (customer is null)
+                {
+                    throw new UnauthorizedAccessException("Customer profile not found.");
+                }
+
+                shipment = await _shipmentRepository.FirstOrDefaultAsync(new ShipmentByIdAndCustomerSpecification(request.Id, customer.Id));
+            }
+            else
+            {
+                shipment = await _shipmentRepository.GetByIdAsync(request.Id);
+            }
 
             if (shipment is null)
             {
                 throw new KeyNotFoundException("Shipment not found.");
             }
 
-
-            var map = _mapper.Map<ShipmentDto>(shipment);
-
-            return map;
+            return _mapper.Map<ShipmentDto>(shipment);
         }
     }
 }

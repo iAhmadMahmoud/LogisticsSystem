@@ -34,7 +34,9 @@ namespace LogisticsSystem.Api.Controllers
         {
             var id = await _sender.Send(command, cancellationToken);
 
-            return CreatedAtAction(nameof(GetById), new { id }, null);
+            var shipment = await _sender.Send(new GetShipmentByIdQuery(id), cancellationToken);
+
+            return CreatedAtAction(nameof(GetById), new { id }, shipment );
         }
 
         [Authorize(Policy = Policies.ShipmentView)]

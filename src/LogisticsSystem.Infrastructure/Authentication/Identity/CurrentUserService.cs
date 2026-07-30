@@ -36,5 +36,11 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
                 return userId;
             }
         }
+        public bool IsInRole(string role)
+        {
+            return _httpContextAccessor.HttpContext?
+                .User
+                .IsInRole(role) ?? false;
+        }
     }
 }
