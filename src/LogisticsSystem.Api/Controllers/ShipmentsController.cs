@@ -12,6 +12,7 @@ using LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetAllShipments;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetShipmentById;
 using LogisticsSystem.Application.Features.ShipmentTrackings.Commands.AddShipmentLocation;
+using LogisticsSystem.Application.Features.ShipmentTrackings.Queries.GetShipmentTracking;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -143,6 +144,24 @@ namespace LogisticsSystem.Api.Controllers
             await _sender.Send(command, cancellationToken);
 
             return NoContent();
+        }
+
+        [Authorize(Policy = Policies.ShipmentView)]
+        [HttpGet("{shipmentId:guid}/tracking")]
+        public async Task<IActionResult> GetTracking(
+            Guid shipmentId,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 20,
+            CancellationToken cancellationToken = default)
+        {
+            var query = new GetShipmentTrackingQuery(
+                shipmentId,
+                pageNumber,
+                pageSize);
+
+            var result = await _sender.Send(query, cancellationToken);
+
+            return Ok(result);
         }
     }
 }
