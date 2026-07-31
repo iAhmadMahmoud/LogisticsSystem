@@ -16,6 +16,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using LogisticsSystem.Application.Common.Interfaces.Services;
+using LogisticsSystem.Infrastructure.Services;
 
 namespace LogisticsSystem.Infrastructure
 {
@@ -142,6 +144,7 @@ namespace LogisticsSystem.Infrastructure
             services.AddScoped<IIdentityService, IdentityService>();
             services.AddScoped<IEmailSender, EmailSender>();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
+            services.AddScoped<IShipmentStatusHistoryService,ShipmentStatusHistoryService>();
 
             return services;
         }

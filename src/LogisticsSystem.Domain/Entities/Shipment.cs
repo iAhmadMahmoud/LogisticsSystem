@@ -32,6 +32,7 @@ namespace LogisticsSystem.Domain.Entities
         public Driver? Driver { get; set; }
         public ICollection<ShipmentTracking> ShipmentTrackings { get; set; } = new List<ShipmentTracking>();
         public ICollection<DispatchAssignment> DispatchAssignments { get; set; } = new List<DispatchAssignment>();
+        public ICollection<ShipmentStatusHistory> StatusHistory { get; set; } = new List<ShipmentStatusHistory>();
 
     }
 }

@@ -1,4 +1,6 @@
-﻿using LogisticsSystem.Application.Common.Interfaces.Persistence;
+﻿using LogisticsSystem.Application.Common.Interfaces.Authentication;
+using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Application.Features.Shipments.Helpers;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
@@ -10,12 +12,16 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
     {
 
         private readonly IGenericRepository<Shipment> _shipmentsRepository;
+        private readonly IShipmentStatusHistoryService _statusHistoryService;
+        private readonly ICurrentUserService _currentUserService;
         private readonly IUnitOfWork _unitOfWork;
 
-        public CancelShipmentCommandHandler(IGenericRepository<Shipment> shipmentsRepository, IUnitOfWork unitOfWork)
+        public CancelShipmentCommandHandler(IGenericRepository<Shipment> shipmentsRepository, IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IShipmentStatusHistoryService statusHistoryService)
         {
             _shipmentsRepository = shipmentsRepository;
             _unitOfWork = unitOfWork;
+            _currentUserService = currentUserService;
+            _statusHistoryService = statusHistoryService;
         }
 
         public async Task Handle(CancelShipmentCommand request, CancellationToken cancellationToken)
@@ -36,6 +42,8 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
             shipment.CancelledAt = DateTime.UtcNow;
 
             _shipmentsRepository.Update(shipment);
+
+            await _statusHistoryService.AddAsync(shipment, ShipmentStatus.Cancelled, _currentUserService.UserId, cancellationToken);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }

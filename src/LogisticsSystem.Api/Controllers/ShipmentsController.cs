@@ -11,6 +11,11 @@ using LogisticsSystem.Application.Features.Shipments.Commands.StartTransit;
 using LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetAllShipments;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetShipmentById;
+using LogisticsSystem.Application.Features.ShipmentStatusHistories.Queries.GetShipmentStatusHistory;
+using LogisticsSystem.Application.Features.ShipmentTrackings.Commands.AddShipmentLocation;
+using LogisticsSystem.Application.Features.ShipmentTrackings.DTOs;
+using LogisticsSystem.Application.Features.ShipmentTrackings.Queries.GetLatestShipmentLocation;
+using LogisticsSystem.Application.Features.ShipmentTrackings.Queries.GetShipmentTracking;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -130,6 +135,60 @@ namespace LogisticsSystem.Api.Controllers
             await _sender.Send(new FailShipmentCommand(id), cancellationToken);
 
             return NoContent();
+        }
+
+
+        [Authorize(Policy = Policies.DriverUpdateStatus)]
+        [HttpPost("{shipmentId:guid}/location")]
+        public async Task<IActionResult> AddLocation(Guid shipmentId, AddShipmentLocationRequest request, CancellationToken cancellationToken)
+        {
+            var command = new AddShipmentLocationCommand(shipmentId, request.Latitude, request.Longitude);
+
+            await _sender.Send(command, cancellationToken);
+
+            return NoContent();
+        }
+
+        [Authorize(Policy = Policies.ShipmentView)]
+        [HttpGet("{shipmentId:guid}/tracking")]
+        public async Task<IActionResult> GetTracking(
+            Guid shipmentId,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 20,
+            CancellationToken cancellationToken = default)
+        {
+            var query = new GetShipmentTrackingQuery(
+                shipmentId,
+                pageNumber,
+                pageSize);
+
+            var result = await _sender.Send(query, cancellationToken);
+
+            return Ok(result);
+        }
+
+
+        [HttpGet("{shipmentId:guid}/location/latest")]
+        [Authorize(Policy = Policies.ShipmentView)]
+        public async Task<ActionResult<ShipmentTrackingDto>> GetLatestLocation(
+            Guid shipmentId,
+            CancellationToken cancellationToken)
+        {
+            var query = new GetLatestShipmentLocationQuery(shipmentId);
+
+            var result = await _sender.Send(query, cancellationToken);
+
+            return Ok(result);
+        }
+
+
+        [HttpGet("{shipmentId:guid}/status-history")]
+        [Authorize(Policy = Policies.ShipmentView)]
+        public async Task<IActionResult> GetStatusHistory(Guid shipmentId, CancellationToken cancellationToken)
+        {
+            var result = await _sender.Send(new GetShipmentStatusHistoryQuery(shipmentId), cancellationToken);
+
+            return Ok(result);
         }
     }
 }

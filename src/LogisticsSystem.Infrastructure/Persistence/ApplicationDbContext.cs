@@ -29,6 +29,7 @@ namespace LogisticsSystem.Infrastructure.Persistence
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
         public DbSet<DispatchAssignment> DispatchAssignments => Set<DispatchAssignment>();
+        public DbSet<ShipmentStatusHistory> shipmentStatusHistories => Set<ShipmentStatusHistory>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

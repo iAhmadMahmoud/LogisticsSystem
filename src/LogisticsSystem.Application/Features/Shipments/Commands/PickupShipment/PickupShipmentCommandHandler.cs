@@ -1,4 +1,6 @@
-﻿using LogisticsSystem.Application.Common.Interfaces.Persistence;
+﻿using LogisticsSystem.Application.Common.Interfaces.Authentication;
+using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Application.Features.Shipments.Helpers;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
@@ -9,12 +11,16 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.PickupShipment
     public sealed class PickupShipmentCommandHandler : IRequestHandler<PickupShipmentCommand>
     {
         private readonly IGenericRepository<Shipment> _shipmentRepository;
+        private readonly IShipmentStatusHistoryService _statusHistoryService;
+        private readonly ICurrentUserService _currentUserService;
         private readonly IUnitOfWork _unitOfWork;
 
-        public PickupShipmentCommandHandler(IGenericRepository<Shipment> shipmentRepository, IUnitOfWork unitOfWork)
+        public PickupShipmentCommandHandler(IGenericRepository<Shipment> shipmentRepository, IUnitOfWork unitOfWork, IShipmentStatusHistoryService statusHistoryService, ICurrentUserService currentUserService)
         {
             _shipmentRepository = shipmentRepository;
             _unitOfWork = unitOfWork;
+            _statusHistoryService = statusHistoryService;
+            _currentUserService = currentUserService;
         }
 
         public async Task Handle(PickupShipmentCommand request, CancellationToken cancellationToken)
@@ -40,6 +46,8 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.PickupShipment
             shipment.PickedUpAt = DateTime.UtcNow;
 
             _shipmentRepository.Update(shipment);
+
+            await _statusHistoryService.AddAsync(shipment, ShipmentStatus.PickedUp, _currentUserService.UserId, cancellationToken);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
