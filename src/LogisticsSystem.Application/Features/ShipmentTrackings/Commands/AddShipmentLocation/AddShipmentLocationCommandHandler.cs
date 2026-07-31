@@ -1,5 +1,6 @@
 ﻿using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Application.Features.ShipmentTrackings.Specifications;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
 using MediatR;
@@ -52,8 +53,21 @@ namespace LogisticsSystem.Application.Features.ShipmentTrackings.Commands.AddShi
 
             if (shipment.Status != ShipmentStatus.InTransit)
             {
-                throw new InvalidOperationException(
-                    "Location tracking is only allowed when the shipment is in transit.");
+                throw new InvalidOperationException("Location tracking is only allowed when the shipment is in transit.");
+            }
+
+            var latestTracking = await _shipmentTrackingRepository.FirstOrDefaultAsync(new LatestShipmentTrackingSpecification(shipment.Id), cancellationToken);
+
+            if (latestTracking is not null)
+            {
+                const double coordinateTolerance = 0.000001;
+
+                var isSameLocation = Math.Abs(latestTracking.Latitude - request.Latitude) < coordinateTolerance && Math.Abs(latestTracking.Longitude - request.Longitude) < coordinateTolerance;
+
+                if (isSameLocation)
+                {
+                    throw new InvalidOperationException("The submitted location is the same as the latest recorded location.");
+                }
             }
 
             var tracking = new ShipmentTracking
