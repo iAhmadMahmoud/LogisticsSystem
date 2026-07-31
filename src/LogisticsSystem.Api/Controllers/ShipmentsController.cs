@@ -11,6 +11,7 @@ using LogisticsSystem.Application.Features.Shipments.Commands.StartTransit;
 using LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetAllShipments;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetShipmentById;
+using LogisticsSystem.Application.Features.ShipmentStatusHistories.Queries.GetShipmentStatusHistory;
 using LogisticsSystem.Application.Features.ShipmentTrackings.Commands.AddShipmentLocation;
 using LogisticsSystem.Application.Features.ShipmentTrackings.DTOs;
 using LogisticsSystem.Application.Features.ShipmentTrackings.Queries.GetLatestShipmentLocation;
@@ -176,6 +177,16 @@ namespace LogisticsSystem.Api.Controllers
             var query = new GetLatestShipmentLocationQuery(shipmentId);
 
             var result = await _sender.Send(query, cancellationToken);
+
+            return Ok(result);
+        }
+
+
+        [HttpGet("{shipmentId:guid}/status-history")]
+        [Authorize(Policy = Policies.ShipmentView)]
+        public async Task<IActionResult> GetStatusHistory(Guid shipmentId, CancellationToken cancellationToken)
+        {
+            var result = await _sender.Send(new GetShipmentStatusHistoryQuery(shipmentId), cancellationToken);
 
             return Ok(result);
         }

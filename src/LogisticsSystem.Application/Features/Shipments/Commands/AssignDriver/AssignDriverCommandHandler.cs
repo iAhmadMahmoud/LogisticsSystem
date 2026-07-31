@@ -1,4 +1,6 @@
-﻿using LogisticsSystem.Application.Common.Interfaces.Persistence;
+﻿using LogisticsSystem.Application.Common.Interfaces.Authentication;
+using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Application.Features.Shipments.Helpers;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
@@ -10,6 +12,8 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver
     {
         private readonly IGenericRepository<Shipment> _shipmentRepository;
         private readonly IGenericRepository<Driver> _driverRepository;
+        private readonly IShipmentStatusHistoryService _shipmentStatusHistoryService;
+        private readonly ICurrentUserService _currentUserService;
         private readonly IUnitOfWork _unitOfWork;
 
         public AssignDriverCommandHandler
@@ -17,11 +21,15 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver
                 IGenericRepository<Shipment> shipmentRepository,
                 IGenericRepository<Driver> driverRepository,
                 IUnitOfWork unitOfWork
-            )
+,
+                IShipmentStatusHistoryService shipmentStatusHistoryService,
+                ICurrentUserService currentUserService)
         {
             _shipmentRepository = shipmentRepository;
             _driverRepository = driverRepository;
             _unitOfWork = unitOfWork;
+            _shipmentStatusHistoryService = shipmentStatusHistoryService;
+            _currentUserService = currentUserService;
         }
 
         public async Task Handle(AssignDriverCommand request, CancellationToken cancellationToken)
@@ -64,6 +72,8 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver
 
             _shipmentRepository.Update(shipment);
             _driverRepository.Update(driver);
+
+            await _shipmentStatusHistoryService.AddAsync(shipment, ShipmentStatus.Assigned, _currentUserService.UserId, cancellationToken);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
