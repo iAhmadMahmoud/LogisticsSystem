@@ -8,13 +8,14 @@ namespace LogisticsSystem.Application.Features.Shipments.Helpers
         {
             return (current, next) switch
             {
-                (ShipmentStatus.Pending, ShipmentStatus.Assigned) => true,
                 (ShipmentStatus.Pending, ShipmentStatus.Cancelled) => true,
+                (ShipmentStatus.Pending, ShipmentStatus.Assigned) => true,
+                (ShipmentStatus.Assigned, ShipmentStatus.Cancelled) => true,
 
                 (ShipmentStatus.Assigned, ShipmentStatus.PickedUp) => true,
-
+                
                 (ShipmentStatus.PickedUp, ShipmentStatus.InTransit) => true,
-
+                
                 (ShipmentStatus.InTransit, ShipmentStatus.Delivered) => true,
                 (ShipmentStatus.InTransit, ShipmentStatus.Failed) => true,
 

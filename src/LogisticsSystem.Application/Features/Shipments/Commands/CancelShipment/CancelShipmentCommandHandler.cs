@@ -12,16 +12,23 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
     {
 
         private readonly IGenericRepository<Shipment> _shipmentsRepository;
+        private readonly IGenericRepository<Driver> _driverRepository;
         private readonly IShipmentStatusHistoryService _statusHistoryService;
         private readonly ICurrentUserService _currentUserService;
         private readonly IUnitOfWork _unitOfWork;
 
-        public CancelShipmentCommandHandler(IGenericRepository<Shipment> shipmentsRepository, IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IShipmentStatusHistoryService statusHistoryService)
+        public CancelShipmentCommandHandler(
+            IGenericRepository<Shipment> shipmentsRepository,
+            ICurrentUserService currentUserService,
+            IShipmentStatusHistoryService statusHistoryService,
+            IGenericRepository<Driver> driverRepository,
+            IUnitOfWork unitOfWork)
         {
             _shipmentsRepository = shipmentsRepository;
-            _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
             _statusHistoryService = statusHistoryService;
+            _driverRepository = driverRepository;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task Handle(CancelShipmentCommand request, CancellationToken cancellationToken)
@@ -38,10 +45,30 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
                 throw new InvalidOperationException($"Shipment cannot transtion from {shipment.Status} to Cancelled.");
             }
 
+            var wasAssigned = shipment.Status == ShipmentStatus.Assigned;
+
             shipment.Status = ShipmentStatus.Cancelled;
             shipment.CancelledAt = DateTime.UtcNow;
 
             _shipmentsRepository.Update(shipment);
+
+            if (wasAssigned)
+            {
+                if (shipment.DriverId is null)
+                {
+                    throw new InvalidOperationException("Assigned shipment has no driver.");
+                }
+
+                var driver = await _driverRepository.GetByIdAsync(shipment.DriverId.Value, cancellationToken);
+
+                if (driver is null)
+                {
+                    throw new KeyNotFoundException("Assigned driver not found.");
+                }
+
+                driver.Status = DriverStatus.Available;
+                _driverRepository.Update(driver);
+            }
 
             await _statusHistoryService.AddAsync(shipment, ShipmentStatus.Cancelled, _currentUserService.UserId, cancellationToken);
 
