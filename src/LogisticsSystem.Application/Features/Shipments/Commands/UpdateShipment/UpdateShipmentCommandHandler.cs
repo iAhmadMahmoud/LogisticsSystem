@@ -3,6 +3,7 @@ using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Features.Customers.Specifications;
 using LogisticsSystem.Application.Features.Shipments.Specifications;
 using LogisticsSystem.Domain.Entities;
+using LogisticsSystem.Domain.Enums;
 using MediatR;
 
 namespace LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment
@@ -11,22 +12,19 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment
     {
         private readonly IGenericRepository<Shipment> _shipmentRepository;
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IGenericRepository<Customer> _customerRepository;
-        private readonly ICurrentUserService _currentUserService;
+
 
 
         public UpdateShipmentCommandHandler
             (
                 IGenericRepository<Shipment> shipmentRepository,
-                IUnitOfWork unitOfWork, 
-                IGenericRepository<Customer> customerRepository,
-                ICurrentUserService currentUserService
+                IUnitOfWork unitOfWork
+
             )
         {
             _shipmentRepository = shipmentRepository;
             _unitOfWork = unitOfWork;
-            _customerRepository = customerRepository;
-            _currentUserService = currentUserService;
+
         }
 
         public async Task Handle(UpdateShipmentCommand request, CancellationToken cancellationToken)
@@ -35,17 +33,15 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment
 
             
 
-            var customer = await _customerRepository.FirstOrDefaultAsync(new CustomerByUserIdSpecification(_currentUserService.UserId));
-
-            if(customer is null)
-            {
-                throw new UnauthorizedAccessException("Customer profile not found.");
-            }
-
-            var shipment = await _shipmentRepository.FirstOrDefaultAsync(new ShipmentByIdAndCustomerSpecification(request.Shipment.Id,customer.Id));
+            var shipment = await _shipmentRepository.GetByIdAsync(dto.Id,cancellationToken);
 
             if (shipment is null)
                 throw new KeyNotFoundException("Shipment not found.");
+
+            if (shipment.Status != ShipmentStatus.Pending)
+            {
+                throw new InvalidOperationException("Only pending shipments can be updated."); 
+            }
 
             // Update editable properties
             shipment.PickupAddress = dto.PickupAddress;
