@@ -14,7 +14,11 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.AcceptDispatchA
         private readonly ICurrentUserService _currentUserService;
         private readonly IUnitOfWork _unitOfWork;
 
-        public AcceptDispatchAssignmentCommandHandler(IGenericRepository<DispatchAssignment> dispatchAssignmentRepository, ICurrentUserService currentUserService, IGenericRepository<Driver> driverRepository, IUnitOfWork unitOfWork)
+        public AcceptDispatchAssignmentCommandHandler(
+            IGenericRepository<DispatchAssignment> dispatchAssignmentRepository,
+            ICurrentUserService currentUserService,
+            IGenericRepository<Driver> driverRepository,
+            IUnitOfWork unitOfWork)
         {
             _dispatchAssignmentRepository = dispatchAssignmentRepository;
             _currentUserService = currentUserService;
