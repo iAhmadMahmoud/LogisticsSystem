@@ -13,16 +13,10 @@ namespace LogisticsSystem.Application.Common.Interfaces.Persistence
         void Delete(TEntity entity);
         IQueryable<TEntity> AsQueryable();
 
-        Task<IReadOnlyList<TEntity>> ListAsync(
-            ISpecification<TEntity> specification,
-            CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<TEntity>> ListAsync( ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
 
-        Task<int> CountAsync(
-            ISpecification<TEntity> specification,
-            CancellationToken cancellationToken = default);
+        Task<int> CountAsync(ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
 
-        Task<TEntity?> FirstOrDefaultAsync(
-            ISpecification<TEntity> specification,
-            CancellationToken cancellationToken = default);
+        Task<TEntity?> FirstOrDefaultAsync( ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
     }
 }
