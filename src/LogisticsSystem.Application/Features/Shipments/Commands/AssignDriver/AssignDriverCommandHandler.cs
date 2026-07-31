@@ -12,6 +12,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver
     {
         private readonly IGenericRepository<Shipment> _shipmentRepository;
         private readonly IGenericRepository<Driver> _driverRepository;
+        private readonly IGenericRepository<DispatchAssignment> _dispatchAssignmentRepository;
         private readonly IShipmentStatusHistoryService _shipmentStatusHistoryService;
         private readonly ICurrentUserService _currentUserService;
         private readonly IUnitOfWork _unitOfWork;
@@ -23,25 +24,27 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver
                 IUnitOfWork unitOfWork
 ,
                 IShipmentStatusHistoryService shipmentStatusHistoryService,
-                ICurrentUserService currentUserService)
+                ICurrentUserService currentUserService,
+                IGenericRepository<DispatchAssignment> dispatchAssignmentRepository)
         {
             _shipmentRepository = shipmentRepository;
             _driverRepository = driverRepository;
             _unitOfWork = unitOfWork;
             _shipmentStatusHistoryService = shipmentStatusHistoryService;
             _currentUserService = currentUserService;
+            _dispatchAssignmentRepository = dispatchAssignmentRepository;
         }
 
         public async Task Handle(AssignDriverCommand request, CancellationToken cancellationToken)
         {
-            var shipment = await _shipmentRepository.GetByIdAsync(request.ShipmentId);
+            var shipment = await _shipmentRepository.GetByIdAsync(request.ShipmentId, cancellationToken);
 
             if (shipment is null)
             {
                 throw new KeyNotFoundException("Shipment not found.");
             }
 
-            var driver = await _driverRepository.GetByIdAsync(request.DriverId);
+            var driver = await _driverRepository.GetByIdAsync(request.DriverId, cancellationToken);
 
             if (driver is null)
             {
@@ -70,8 +73,19 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver
 
             driver.Status = DriverStatus.Busy;
 
+            var dispatchAssignment = new DispatchAssignment
+            {
+                ShipmentId = shipment.Id,
+                DriverId = driver.Id,
+                AttemptNumber = 1,
+                Status = AssignmentStatus.Pending,
+                SentAt = DateTime.UtcNow
+            };
+
             _shipmentRepository.Update(shipment);
             _driverRepository.Update(driver);
+
+            await _dispatchAssignmentRepository.AddAsync(dispatchAssignment, cancellationToken);
 
             await _shipmentStatusHistoryService.AddAsync(shipment, ShipmentStatus.Assigned, _currentUserService.UserId, cancellationToken);
 
