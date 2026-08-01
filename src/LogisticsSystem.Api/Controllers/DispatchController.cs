@@ -1,5 +1,6 @@
 ﻿using LogisticsSystem.Application.Authorization;
 using LogisticsSystem.Application.Features.Dispatch.Commands.AcceptDispatchAssignment;
+using LogisticsSystem.Application.Features.Dispatch.Commands.RejectDispatchAssignment;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -26,6 +27,15 @@ namespace LogisticsSystem.Api.Controllers
             CancellationToken cancellationToken)
         {
             await _sender.Send( new AcceptDispatchAssignmentCommand(assignmentId), cancellationToken);
+
+            return NoContent();
+        }
+
+        [Authorize(Policy = Policies.DriverUpdateStatus)]
+        [HttpPost("assignments/{assignmentId:guid}/reject")]
+        public async Task<IActionResult> RejectAssignment(Guid assignmentId, CancellationToken cancellationToken)
+        {
+            await _sender.Send(new RejectDispatchAssignmentCommand(assignmentId), cancellationToken);
 
             return NoContent();
         }
