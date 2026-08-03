@@ -5,6 +5,7 @@ using LogisticsSystem.Application.Features.Shipments.Helpers;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace LogisticsSystem.Application.Features.Shipments.Commands.FailShipment
 {
@@ -43,19 +44,30 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.FailShipment
             {
                 throw new InvalidOperationException($"Shipment cannot transition from {shipment.Status} to Failed.");
             }
+            var currentDriver = await _driverRepository.AsQueryable().FirstOrDefaultAsync(d => d.UserId == _currentUserService.UserId,cancellationToken);
 
-            var driver = await _driverRepository.GetByIdAsync(shipment.DriverId.Value);
-
-            if(driver is null)
+            if (currentDriver is null)
             {
-                throw new KeyNotFoundException("Driver not found.");
+                throw new UnauthorizedAccessException("Driver profile not found.");
+            }
+
+            if (shipment.DriverId != currentDriver.Id)
+            {
+                throw new UnauthorizedAccessException("You are not assigned to this shipment.");
+            }
+
+            if (!ShipmentStatusTransitionValidator.CanTransition(shipment.Status,ShipmentStatus.Failed))
+            {
+                throw new InvalidOperationException(
+                    $"Shipment cannot transition from {shipment.Status} to Failed.");
             }
 
             shipment.Status = ShipmentStatus.Failed;
-            driver.Status = DriverStatus.Available;
+            shipment.FailedAt = DateTime.UtcNow;
+            currentDriver.Status = DriverStatus.Available;
             
             _shipmentRepository.Update(shipment);
-            _driverRepository.Update(driver);
+            _driverRepository.Update(currentDriver);
 
             await _statusHistoryService.AddAsync(shipment, ShipmentStatus.Failed, _currentUserService.UserId, cancellationToken);
 

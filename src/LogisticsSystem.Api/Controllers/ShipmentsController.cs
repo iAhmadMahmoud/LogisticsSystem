@@ -119,7 +119,7 @@ namespace LogisticsSystem.Api.Controllers
             return NoContent();
         }
 
-        [Authorize(Policy = Policies.ShipmentUpdate)]
+        [Authorize(Policy = Policies.ShipmentCancel)]
         [HttpPost("{id:guid}/cancel")]
         public async Task<IActionResult> Cancel(Guid id, CancellationToken cancellationToken)
         {

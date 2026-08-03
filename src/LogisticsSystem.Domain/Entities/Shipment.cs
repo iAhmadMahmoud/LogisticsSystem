@@ -26,6 +26,7 @@ namespace LogisticsSystem.Domain.Entities
         public DateTime? AssignedAt { get; set; }
         public DateTime? PickedUpAt { get; set; }
         public DateTime? DeliveredAt { get; set; }
+        public DateTime? FailedAt { get; set; }
         public DateTime? CancelledAt { get; set; }
 
         public Customer Customer { get; set; } = default!;

@@ -5,6 +5,7 @@ using LogisticsSystem.Application.Features.Shipments.Helpers;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace LogisticsSystem.Application.Features.Shipments.Commands.DeliverShipment
 {
@@ -34,25 +35,31 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.DeliverShipmen
             if (shipment.DriverId is null)
                 throw new InvalidOperationException("Shipment has no assigned driver.");
 
-            if (!ShipmentStatusTransitionValidator.CanTransition(
-                    shipment.Status,
-                    ShipmentStatus.Delivered))
+        
+
+            var currentDriver = await _driverRepository.AsQueryable().FirstOrDefaultAsync(d => d.UserId == _currentUserService.UserId, cancellationToken);
+
+            if (currentDriver is null)
+            {
+                throw new UnauthorizedAccessException("Driver profile not found.");
+            }
+
+            if (shipment.DriverId != currentDriver.Id)
+            {
+                throw new UnauthorizedAccessException("You are not assigned to this shipment.");
+            }
+
+            if (!ShipmentStatusTransitionValidator.CanTransition(shipment.Status, ShipmentStatus.Delivered))
             {
                 throw new InvalidOperationException($"Shipment cannot transition from {shipment.Status} to Delivered.");
             }
-
-            var driver = await _driverRepository.GetByIdAsync(shipment.DriverId.Value);
-
-            if (driver is null)
-                throw new KeyNotFoundException("Driver not found.");
-
             shipment.Status = ShipmentStatus.Delivered;
             shipment.DeliveredAt = DateTime.UtcNow;
 
-            driver.Status = DriverStatus.Available;
+            currentDriver.Status = DriverStatus.Available;
 
             _shipmentRepository.Update(shipment);
-            _driverRepository.Update(driver);
+            _driverRepository.Update(currentDriver);
 
             await _statusHistoryService.AddAsync(shipment, ShipmentStatus.Delivered, _currentUserService.UserId, cancellationToken);
 

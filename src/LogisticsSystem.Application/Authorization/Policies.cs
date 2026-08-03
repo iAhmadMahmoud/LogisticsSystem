@@ -7,6 +7,7 @@ namespace LogisticsSystem.Application.Authorization
         public const string ShipmentViewAll = Permissions.Shipments.ViewAll;
         public const string ShipmentUpdate = Permissions.Shipments.Update;
         public const string ShipmentDelete = Permissions.Shipments.Delete;
+        public const string ShipmentCancel = Permissions.Shipments.Cancel;
 
         public const string DriverView = Permissions.Drivers.View;
         public const string DriverViewAll = Permissions.Drivers.ViewAll;
