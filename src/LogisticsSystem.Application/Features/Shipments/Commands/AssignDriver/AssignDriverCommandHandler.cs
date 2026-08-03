@@ -1,10 +1,10 @@
-﻿using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
-using LogisticsSystem.Application.Common.Interfaces.Services;
+using LogisticsSystem.Application.Features.Dispatch.Specifications;
 using LogisticsSystem.Application.Features.Shipments.Helpers;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver
 {
@@ -13,30 +13,23 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver
         private readonly IGenericRepository<Shipment> _shipmentRepository;
         private readonly IGenericRepository<Driver> _driverRepository;
         private readonly IGenericRepository<DispatchAssignment> _dispatchAssignmentRepository;
-        private readonly IShipmentStatusHistoryService _shipmentStatusHistoryService;
-        private readonly ICurrentUserService _currentUserService;
         private readonly IUnitOfWork _unitOfWork;
 
-        public AssignDriverCommandHandler
-            (
-                IGenericRepository<Shipment> shipmentRepository,
-                IGenericRepository<Driver> driverRepository,
-                IUnitOfWork unitOfWork
-,
-                IShipmentStatusHistoryService shipmentStatusHistoryService,
-                ICurrentUserService currentUserService,
-                IGenericRepository<DispatchAssignment> dispatchAssignmentRepository)
+        public AssignDriverCommandHandler(
+            IGenericRepository<Shipment> shipmentRepository,
+            IGenericRepository<Driver> driverRepository,
+            IGenericRepository<DispatchAssignment> dispatchAssignmentRepository,
+            IUnitOfWork unitOfWork)
         {
             _shipmentRepository = shipmentRepository;
             _driverRepository = driverRepository;
-            _unitOfWork = unitOfWork;
-            _shipmentStatusHistoryService = shipmentStatusHistoryService;
-            _currentUserService = currentUserService;
             _dispatchAssignmentRepository = dispatchAssignmentRepository;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task Handle(AssignDriverCommand request, CancellationToken cancellationToken)
         {
+            // 1. Load the shipment
             var shipment = await _shipmentRepository.GetByIdAsync(request.ShipmentId, cancellationToken);
 
             if (shipment is null)
@@ -44,6 +37,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver
                 throw new KeyNotFoundException("Shipment not found.");
             }
 
+            // 2. Load the driver
             var driver = await _driverRepository.GetByIdAsync(request.DriverId, cancellationToken);
 
             if (driver is null)
@@ -51,43 +45,52 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver
                 throw new KeyNotFoundException("Driver not found.");
             }
 
-            if (shipment.DriverId is not null)
-            {
-                throw new InvalidOperationException(
-                    "Shipment already has a driver assigned.");
-            }
-
+            // 3. Verify the shipment is in a state that can receive a dispatch offer
             if (!ShipmentStatusTransitionValidator.CanTransition(shipment.Status, ShipmentStatus.Assigned))
             {
-                throw new InvalidOperationException($"Shipment cannot transition from {shipment.Status} to Assigned.");
+                throw new InvalidOperationException(
+                    $"A dispatch offer cannot be sent for a shipment with status '{shipment.Status}'.");
             }
 
+            // 4. Verify the shipment does not already have an accepted driver
+            if (shipment.DriverId is not null)
+            {
+                throw new InvalidOperationException("Shipment already has an accepted driver assignment.");
+            }
+
+            // 5. Verify the driver is available
             if (driver.Status != DriverStatus.Available)
             {
                 throw new InvalidOperationException("Driver is not available.");
             }
 
-            shipment.DriverId = driver.Id;
-            shipment.Status = ShipmentStatus.Assigned;
-            shipment.AssignedAt = DateTime.UtcNow;
+            // 6. Prevent duplicate active (Pending) offers for the same shipment
+            var hasPendingAssignment = await _dispatchAssignmentRepository
+                .AsQueryable()
+                .AnyAsync(x => x.ShipmentId == request.ShipmentId && x.Status == AssignmentStatus.Pending, cancellationToken);
 
-            driver.Status = DriverStatus.Busy;
+            if (hasPendingAssignment)
+            {
+                throw new InvalidOperationException(
+                    "A pending dispatch offer already exists for this shipment. Wait for the driver to respond before sending another offer.");
+            }
 
+            // 7. Calculate the next AttemptNumber for this shipment
+            var attemptNumber = await _dispatchAssignmentRepository
+                .AsQueryable()
+                .CountAsync(x => x.ShipmentId == request.ShipmentId, cancellationToken) + 1;
+
+            // 8. Create a Pending dispatch offer — shipment and driver state do NOT change here
             var dispatchAssignment = new DispatchAssignment
             {
                 ShipmentId = shipment.Id,
                 DriverId = driver.Id,
-                AttemptNumber = 1,
+                AttemptNumber = attemptNumber,
                 Status = AssignmentStatus.Pending,
                 SentAt = DateTime.UtcNow
             };
 
-            _shipmentRepository.Update(shipment);
-            _driverRepository.Update(driver);
-
             await _dispatchAssignmentRepository.AddAsync(dispatchAssignment, cancellationToken);
-
-            await _shipmentStatusHistoryService.AddAsync(shipment, ShipmentStatus.Assigned, _currentUserService.UserId, cancellationToken);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
