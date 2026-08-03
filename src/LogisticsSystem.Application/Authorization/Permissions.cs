@@ -1,5 +1,3 @@
-using System.Runtime.InteropServices;
-
 namespace LogisticsSystem.Application.Authorization
 {
     public static class Permissions
@@ -11,6 +9,7 @@ namespace LogisticsSystem.Application.Authorization
             public const string ViewAll = "Shipments.ViewAll";
             public const string Update = "Shipments.Update";
             public const string Delete = "Shipments.Delete";
+            public const string Cancel = "Shipments.Cancel";
         }
 
         public static class Drivers

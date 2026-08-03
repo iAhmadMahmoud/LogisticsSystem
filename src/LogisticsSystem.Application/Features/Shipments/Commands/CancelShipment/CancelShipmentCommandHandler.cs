@@ -1,7 +1,9 @@
 ﻿using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Common.Interfaces.Services;
+using LogisticsSystem.Application.Features.Customers.Specifications;
 using LogisticsSystem.Application.Features.Shipments.Helpers;
+using LogisticsSystem.Domain.Constants;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
 using MediatR;
@@ -15,6 +17,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
         private readonly IGenericRepository<Driver> _driverRepository;
         private readonly IShipmentStatusHistoryService _statusHistoryService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IGenericRepository<Customer> _customerRepository;
         private readonly IUnitOfWork _unitOfWork;
 
         public CancelShipmentCommandHandler(
@@ -22,13 +25,15 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
             ICurrentUserService currentUserService,
             IShipmentStatusHistoryService statusHistoryService,
             IGenericRepository<Driver> driverRepository,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            IGenericRepository<Customer> customerRepository)
         {
             _shipmentsRepository = shipmentsRepository;
             _currentUserService = currentUserService;
             _statusHistoryService = statusHistoryService;
             _driverRepository = driverRepository;
             _unitOfWork = unitOfWork;
+            _customerRepository = customerRepository;
         }
 
         public async Task Handle(CancelShipmentCommand request, CancellationToken cancellationToken)
@@ -38,6 +43,25 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
             if (shipment is null)
             {
                 throw new KeyNotFoundException("Shipment not found.");
+            }
+
+            if (_currentUserService.IsInRole(Roles.Customer))
+            {
+                var customer = await _customerRepository.FirstOrDefaultAsync(
+                    new CustomerByUserIdSpecification(
+                        _currentUserService.UserId),
+                    cancellationToken);
+
+                if (customer is null)
+                {
+                    throw new UnauthorizedAccessException(
+                        "Customer profile not found.");
+                }
+
+                if (shipment.CustomerId != customer.Id)
+                {
+                    throw new UnauthorizedAccessException("You are not allowed to cancel this shipment.");
+                }
             }
 
             if (!ShipmentStatusTransitionValidator.CanTransition(shipment.Status, ShipmentStatus.Cancelled))

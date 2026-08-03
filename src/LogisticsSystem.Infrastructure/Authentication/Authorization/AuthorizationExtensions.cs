@@ -35,6 +35,13 @@ namespace LogisticsSystem.Infrastructure.Authentication.Authorization
                         Roles.Admin));
 
                 options.AddPolicy(
+                    Policies.ShipmentCancel,
+                    policy => policy.RequireRole(
+                        Roles.Customer,
+                        Roles.Dispatcher,
+                        Roles.Admin));
+
+                options.AddPolicy(
                     Policies.ShipmentDelete,
                     policy => policy.RequireRole(
                         Roles.Admin));
