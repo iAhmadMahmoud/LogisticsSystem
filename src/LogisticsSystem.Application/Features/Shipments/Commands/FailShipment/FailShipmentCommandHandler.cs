@@ -52,6 +52,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.FailShipment
             }
 
             shipment.Status = ShipmentStatus.Failed;
+            shipment.FailedAt = DateTime.UtcNow;
             driver.Status = DriverStatus.Available;
             
             _shipmentRepository.Update(shipment);
