@@ -54,6 +54,7 @@ namespace LogisticsSystem.Api.Controllers
             return Ok(result);
         }
 
+        [Authorize]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout([FromBody] LogoutCommand command)
         {
