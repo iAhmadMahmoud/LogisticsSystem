@@ -1,6 +1,7 @@
 ﻿using LogisticsSystem.Api.Contracts.Drivers;
 using LogisticsSystem.Application.Authorization;
 using LogisticsSystem.Application.Features.Drivers.Commands.CreateDriver;
+using LogisticsSystem.Application.Features.Drivers.Commands.UpdateDriverStatus;
 using LogisticsSystem.Application.Features.Drivers.Queries.GetAllDrivers;
 using LogisticsSystem.Application.Features.Drivers.Queries.GetAvailableDrivers;
 using LogisticsSystem.Application.Features.Drivers.Queries.GetDriverById;
@@ -38,8 +39,8 @@ namespace LogisticsSystem.Api.Controllers
 
             var driverId = await _sender.Send(command, cancellationToken);
 
-            return Created($"/api/drivers/{driverId}", new { id = driverId });
-            //return CreatedAtAction(nameof(GetById), new { id = driverId }, new { id = driverId });
+            //return Created($"/api/drivers/{driverId}", new { id = driverId });
+            return CreatedAtAction(nameof(GetDriverById), new { id = driverId }, new { id = driverId });
         }
 
         [Authorize(Policy = Policies.DriverViewAll)]
@@ -79,6 +80,12 @@ namespace LogisticsSystem.Api.Controllers
             return Ok(result);
         }
 
-        
+        [Authorize(Policy =Policies.DriverUpdateStatus)]
+        [HttpPatch("status")]
+        public async Task<IActionResult> UpdateStatus([FromBody] UpdateDriverStatusCommand command,CancellationToken cancellationToken)
+        {
+            await _sender.Send(command, cancellationToken);
+            return NoContent();
+        }
     }
 }
