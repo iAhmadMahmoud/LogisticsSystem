@@ -3,7 +3,7 @@ using LogisticsSystem.Application.Features.Drivers.Specifications;
 using LogisticsSystem.Domain.Entities;
 using MediatR;
 
-namespace LogisticsSystem.Application.Features.Drivers.Queries
+namespace LogisticsSystem.Application.Features.Drivers.Queries.GetAvailableDrivers
 {
     public sealed class GetAvailableDriversQueryHandler : IRequestHandler<GetAvailableDriversQuery, IReadOnlyList<DriverResponse>>
     {

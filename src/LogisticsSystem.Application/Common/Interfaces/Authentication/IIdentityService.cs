@@ -12,5 +12,6 @@ namespace LogisticsSystem.Application.Common.Interfaces.Authentication
         Task ForgotPasswordAsync(string email);
         Task ResetPasswordAsync(ResetPasswordRequest request);
         Task ChangePasswordAsync(ChangePasswordRequest request);
+        Task<Guid> CreateDriverAsync(CreateDriverIdentityRequest request,CancellationToken cancellationToken = default);
     }
 }

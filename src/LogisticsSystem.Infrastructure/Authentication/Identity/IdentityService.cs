@@ -105,6 +105,41 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
             EnsureSucceeded(result);
         }
+        public async Task<Guid> CreateDriverAsync(CreateDriverIdentityRequest request, CancellationToken cancellationToken = default)
+        {
+            var existignUser = await _userManager.FindByEmailAsync(request.Email);
+            if (existignUser is not null)
+            {
+                throw new InvalidOperationException(ErrorMessages.EmailAlreadyExists);
+            }
+
+            var existingUsername = await _userManager.FindByNameAsync(request.UserName);
+
+            if(existingUsername is not null)
+            {
+                throw new InvalidOperationException(ErrorMessages.UsernameAlreadyExists);
+            }
+
+            var user = new ApplicationUser
+            {
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                UserName = request.UserName,
+                Email = request.Email,
+                EmailConfirmed = false,
+                IsActive = true
+            };
+
+            var createResult = await _userManager.CreateAsync(user,request.Password);
+
+            EnsureSucceeded(createResult);
+
+            var roleResult = await _userManager.AddToRoleAsync(user, Roles.Driver);
+
+            EnsureSucceeded(roleResult);
+
+            return user.Id;
+        }
 
         public async Task ForgotPasswordAsync(string email)
         {
@@ -390,5 +425,7 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
             return refreshToken;
         }
+
+        
     }
 }

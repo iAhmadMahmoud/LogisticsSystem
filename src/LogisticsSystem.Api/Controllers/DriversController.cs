@@ -1,5 +1,9 @@
-﻿using LogisticsSystem.Application.Authorization;
-using LogisticsSystem.Application.Features.Drivers.Queries;
+﻿using LogisticsSystem.Api.Contracts.Drivers;
+using LogisticsSystem.Application.Authorization;
+using LogisticsSystem.Application.Features.Drivers.Commands.CreateDriver;
+using LogisticsSystem.Application.Features.Drivers.Queries.GetAllDrivers;
+using LogisticsSystem.Application.Features.Drivers.Queries.GetAvailableDrivers;
+using LogisticsSystem.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +21,43 @@ namespace LogisticsSystem.Api.Controllers
             _sender = sender;
         }
 
+
+
+        [Authorize(Policy = Policies.DriverManage)]
+        [HttpPost]
+        public async Task<IActionResult> Create(CreateDriverRequest request, CancellationToken cancellationToken)
+        {
+            var command = new CreateDriverCommand(
+                request.FirstName,
+                request.LastName,
+                request.Username,
+                request.Email,
+                request.Password,
+                request.LicenseNumber);
+
+            var driverId = await _sender.Send(command, cancellationToken);
+
+            return Created($"/api/drivers/{driverId}", new { id = driverId });
+            //return CreatedAtAction(nameof(GetById), new { id = driverId }, new { id = driverId });
+        }
+
+        [Authorize(Policy = Policies.DriverViewAll)]
+        [HttpGet]
+        public async Task<IActionResult> GetAll(
+            [FromQuery] int pageNumber =1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] DriverStatus? status = null,
+            CancellationToken cancellationToken = default
+            )
+        {
+            var query = new GetAllDriversQuery(pageNumber, pageSize, status);
+            var result = await _sender.Send(query, cancellationToken);
+
+            return Ok(result);
+
+        }
+
+
         [Authorize(Policy = Policies.DispatchAssignDriver)]
         [HttpGet("available")]
         public async Task<IActionResult> GetAvailableDrivers(
@@ -28,5 +69,7 @@ namespace LogisticsSystem.Api.Controllers
 
             return Ok(result);
         }
+
+        
     }
 }
