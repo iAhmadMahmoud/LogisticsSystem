@@ -3,6 +3,7 @@ using LogisticsSystem.Application.Authorization;
 using LogisticsSystem.Application.Features.Drivers.Commands.CreateDriver;
 using LogisticsSystem.Application.Features.Drivers.Queries.GetAllDrivers;
 using LogisticsSystem.Application.Features.Drivers.Queries.GetAvailableDrivers;
+using LogisticsSystem.Application.Features.Drivers.Queries.GetDriverById;
 using LogisticsSystem.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -44,7 +45,7 @@ namespace LogisticsSystem.Api.Controllers
         [Authorize(Policy = Policies.DriverViewAll)]
         [HttpGet]
         public async Task<IActionResult> GetAll(
-            [FromQuery] int pageNumber =1,
+            [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] DriverStatus? status = null,
             CancellationToken cancellationToken = default
@@ -57,6 +58,14 @@ namespace LogisticsSystem.Api.Controllers
 
         }
 
+        [Authorize(Policy = Policies.DriverView)]
+        [HttpGet("{id:guid}")]
+        public async Task<IActionResult> GetDriverById(Guid Id, CancellationToken cancellationToken)
+        {
+            var result = await _sender.Send(new GetDriverByIdQuery(Id), cancellationToken);
+
+            return Ok(result);
+        }
 
         [Authorize(Policy = Policies.DispatchAssignDriver)]
         [HttpGet("available")]
