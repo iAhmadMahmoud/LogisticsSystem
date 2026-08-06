@@ -1,6 +1,7 @@
 ﻿using LogisticsSystem.Api.Contracts.Drivers;
 using LogisticsSystem.Application.Authorization;
 using LogisticsSystem.Application.Features.Drivers.Commands.CreateDriver;
+using LogisticsSystem.Application.Features.Drivers.Commands.UpdateDriverLocation;
 using LogisticsSystem.Application.Features.Drivers.Commands.UpdateDriverStatus;
 using LogisticsSystem.Application.Features.Drivers.Queries.GetAllDrivers;
 using LogisticsSystem.Application.Features.Drivers.Queries.GetAvailableDrivers;
@@ -85,6 +86,15 @@ namespace LogisticsSystem.Api.Controllers
         public async Task<IActionResult> UpdateStatus([FromBody] UpdateDriverStatusCommand command,CancellationToken cancellationToken)
         {
             await _sender.Send(command, cancellationToken);
+            return NoContent();
+        }
+
+        [Authorize(Policy = Policies.DriverUpdateStatus)]
+        [HttpPatch("location")]
+        public async Task<IActionResult> UpdateLocation([FromBody] UpdateDriverLocationCommand command, CancellationToken cancellationToken)
+        {
+            await _sender.Send(command, cancellationToken);
+
             return NoContent();
         }
     }
