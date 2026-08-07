@@ -1,23 +1,24 @@
 using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Infrastructure.Authentication.Authorization;
 using LogisticsSystem.Infrastructure.Authentication.Email;
 using LogisticsSystem.Infrastructure.Authentication.Identity;
 using LogisticsSystem.Infrastructure.Authentication.Jwt;
 using LogisticsSystem.Infrastructure.Authentication.Tokens;
+using LogisticsSystem.Infrastructure.BackgroundJobs;
 using LogisticsSystem.Infrastructure.Identity;
 using LogisticsSystem.Infrastructure.Persistence;
 using LogisticsSystem.Infrastructure.Persistence.Repositories;
+using LogisticsSystem.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using LogisticsSystem.Application.Common.Interfaces.Services;
-using LogisticsSystem.Infrastructure.Services;
 
 namespace LogisticsSystem.Infrastructure
 {
@@ -145,6 +146,8 @@ namespace LogisticsSystem.Infrastructure
             services.AddScoped<IEmailSender, EmailSender>();
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IShipmentStatusHistoryService,ShipmentStatusHistoryService>();
+            services.AddScoped<IDriverAssignmentService, DriverAssignmentService>();
+            services.AddHostedService<ShipmentAssignmentWorker>();
 
             return services;
         }

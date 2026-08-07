@@ -1,8 +1,11 @@
 ﻿using LogisticsSystem.Api.Contracts.Drivers;
 using LogisticsSystem.Application.Authorization;
 using LogisticsSystem.Application.Features.Drivers.Commands.CreateDriver;
+using LogisticsSystem.Application.Features.Drivers.Commands.UpdateDriverLocation;
+using LogisticsSystem.Application.Features.Drivers.Commands.UpdateDriverStatus;
 using LogisticsSystem.Application.Features.Drivers.Queries.GetAllDrivers;
 using LogisticsSystem.Application.Features.Drivers.Queries.GetAvailableDrivers;
+using LogisticsSystem.Application.Features.Drivers.Queries.GetDriverById;
 using LogisticsSystem.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -37,14 +40,14 @@ namespace LogisticsSystem.Api.Controllers
 
             var driverId = await _sender.Send(command, cancellationToken);
 
-            return Created($"/api/drivers/{driverId}", new { id = driverId });
-            //return CreatedAtAction(nameof(GetById), new { id = driverId }, new { id = driverId });
+            //return Created($"/api/drivers/{driverId}", new { id = driverId });
+            return CreatedAtAction(nameof(GetDriverById), new { id = driverId }, new { id = driverId });
         }
 
         [Authorize(Policy = Policies.DriverViewAll)]
         [HttpGet]
         public async Task<IActionResult> GetAll(
-            [FromQuery] int pageNumber =1,
+            [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] DriverStatus? status = null,
             CancellationToken cancellationToken = default
@@ -57,6 +60,14 @@ namespace LogisticsSystem.Api.Controllers
 
         }
 
+        [Authorize(Policy = Policies.DriverView)]
+        [HttpGet("{id:guid}")]
+        public async Task<IActionResult> GetDriverById(Guid Id, CancellationToken cancellationToken)
+        {
+            var result = await _sender.Send(new GetDriverByIdQuery(Id), cancellationToken);
+
+            return Ok(result);
+        }
 
         [Authorize(Policy = Policies.DispatchAssignDriver)]
         [HttpGet("available")]
@@ -70,6 +81,21 @@ namespace LogisticsSystem.Api.Controllers
             return Ok(result);
         }
 
-        
+        [Authorize(Policy =Policies.DriverUpdateStatus)]
+        [HttpPatch("status")]
+        public async Task<IActionResult> UpdateStatus([FromBody] UpdateDriverStatusCommand command,CancellationToken cancellationToken)
+        {
+            await _sender.Send(command, cancellationToken);
+            return NoContent();
+        }
+
+        [Authorize(Policy = Policies.DriverUpdateStatus)]
+        [HttpPatch("location")]
+        public async Task<IActionResult> UpdateLocation([FromBody] UpdateDriverLocationCommand command, CancellationToken cancellationToken)
+        {
+            await _sender.Send(command, cancellationToken);
+
+            return NoContent();
+        }
     }
 }
