@@ -1,5 +1,7 @@
 ﻿using LogisticsSystem.Api.Contracts.Shipments;
 using LogisticsSystem.Application.Authorization;
+using LogisticsSystem.Application.Common.Models;
+using LogisticsSystem.Application.Features.Dispatch.Queries.GetAssignmentHistory;
 using LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver;
 using LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment;
 using LogisticsSystem.Application.Features.Shipments.Commands.CreateShipment;
@@ -187,6 +189,24 @@ namespace LogisticsSystem.Api.Controllers
         public async Task<IActionResult> GetStatusHistory(Guid shipmentId, CancellationToken cancellationToken)
         {
             var result = await _sender.Send(new GetShipmentStatusHistoryQuery(shipmentId), cancellationToken);
+
+            return Ok(result);
+        }
+
+        [HttpGet("{shipmentId:guid}/assignments/history")]
+        [Authorize(Policy = Policies.ShipmentView)]
+        public async Task<ActionResult<PagedResult<AssignmentHistoryResponse>>> GetAssignmentHistory(
+            Guid shipmentId,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            CancellationToken cancellationToken = default)
+        {
+            var result = await _sender.Send(
+                new GetAssignmentHistoryQuery(
+                    shipmentId,
+                    pageNumber,
+                    pageSize),
+                cancellationToken);
 
             return Ok(result);
         }
