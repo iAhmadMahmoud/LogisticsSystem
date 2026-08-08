@@ -1,3 +1,4 @@
+using Hangfire;
 using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Common.Interfaces.Services;
@@ -34,6 +35,14 @@ namespace LogisticsSystem.Infrastructure
             {
                 option.UseSqlServer(configuration.GetConnectionString("LogisticsSystem"));
             });
+
+            services.AddHangfire(config =>
+            {
+                config.UseSqlServerStorage(
+                    configuration.GetConnectionString("LogisticsSystem"));
+            });
+
+            services.AddHangfireServer();
 
             services.AddScoped<IApplicationDbContext>(sp =>
                 sp.GetRequiredService<ApplicationDbContext>());
@@ -72,6 +81,7 @@ namespace LogisticsSystem.Infrastructure
 
             services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
             services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+            services.Configure<DispatchOptions>(configuration.GetSection("Dispatch"));
 
             services.AddAuthentication(options =>
                 {
@@ -147,6 +157,7 @@ namespace LogisticsSystem.Infrastructure
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IShipmentStatusHistoryService,ShipmentStatusHistoryService>();
             services.AddScoped<IDriverAssignmentService, DriverAssignmentService>();
+            services.AddScoped<IAssignmentExpirationService, AssignmentExpirationService>();
             services.AddHostedService<ShipmentAssignmentWorker>();
 
             return services;

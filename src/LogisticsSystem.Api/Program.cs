@@ -1,5 +1,7 @@
+using Hangfire;
 using LogisticsSystem.Api.Common.Extensions;
 using LogisticsSystem.Application;
+using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Infrastructure;
 using Microsoft.OpenApi;
 
@@ -46,6 +48,9 @@ public class Program
         builder.Services.AddProblemDetails();
 
         var app = builder.Build();
+
+        app.UseHangfireDashboard("/hangfire");
+        RecurringJob.AddOrUpdate<IAssignmentExpirationService>("expire-dispatch-assignments", service => service.ExpireAssignmentsAsync(CancellationToken.None), Cron.Minutely);
 
         using (var scope = app.Services.CreateScope())
         {
