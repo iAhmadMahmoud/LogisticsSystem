@@ -11,7 +11,7 @@ namespace LogisticsSystem.Application.Features.Dispatch.Specifications
                 x.Status == AssignmentStatus.Pending && 
                 x.SentAt<= expirationTime)
         {
-            
+            AddInclude(x=>x.Shipment);
         }
     }
 }
