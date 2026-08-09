@@ -160,6 +160,7 @@ namespace LogisticsSystem.Infrastructure
             services.AddScoped<IAssignmentExpirationService, AssignmentExpirationService>();
             services.AddScoped<INearestDriverService, NearestDriverService>();
             services.AddScoped<IDispatchAssignmentService, DispatchAssignmentService>();
+            services.AddScoped<INotificationService, NotificationService>();
             services.AddHostedService<ShipmentAssignmentWorker>();
 
             return services;
