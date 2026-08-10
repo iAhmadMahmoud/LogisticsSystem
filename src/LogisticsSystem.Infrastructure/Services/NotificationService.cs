@@ -31,7 +31,7 @@ namespace LogisticsSystem.Infrastructure.Services
 
             await _notificationRepository.AddAsync(notification,cancellationToken);
 
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
         }
 
         public async Task<PagedResult<NotificationResponse>> GetMyNotificationAsync(Guid userId, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
@@ -65,14 +65,24 @@ namespace LogisticsSystem.Infrastructure.Services
 
         public async Task MarkAsReadAsync(Guid notificationId, Guid userId, CancellationToken cancellationToken = default)
         {
-            var notification = await _notificationRepository.AsQueryable().FirstOrDefaultAsync(x=>x.Id == notificationId && x.UserId == userId,cancellationToken);
+            var specification = new NotificationByIdSpecification(
+                    notificationId,
+                    userId);
 
-            if(notification is null)
+            var notification = await _notificationRepository
+                .FirstOrDefaultAsync(
+                    specification,
+                    cancellationToken);
+
+            if (notification is null)
             {
                 throw new KeyNotFoundException("Notification not found.");
             }
+
             if (notification.IsRead)
+            {
                 return;
+            }
 
             notification.IsRead = true;
             notification.ReadAt = DateTime.UtcNow;

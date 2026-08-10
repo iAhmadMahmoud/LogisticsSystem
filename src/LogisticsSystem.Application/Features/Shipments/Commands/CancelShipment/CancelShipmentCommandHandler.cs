@@ -18,6 +18,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
         private readonly IShipmentStatusHistoryService _statusHistoryService;
         private readonly ICurrentUserService _currentUserService;
         private readonly IGenericRepository<Customer> _customerRepository;
+        private readonly INotificationService _notificationService;
         private readonly IUnitOfWork _unitOfWork;
 
         public CancelShipmentCommandHandler(
@@ -26,7 +27,8 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
             IShipmentStatusHistoryService statusHistoryService,
             IGenericRepository<Driver> driverRepository,
             IUnitOfWork unitOfWork,
-            IGenericRepository<Customer> customerRepository)
+            IGenericRepository<Customer> customerRepository,
+            INotificationService notificationService)
         {
             _shipmentsRepository = shipmentsRepository;
             _currentUserService = currentUserService;
@@ -34,6 +36,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
             _driverRepository = driverRepository;
             _unitOfWork = unitOfWork;
             _customerRepository = customerRepository;
+            _notificationService = notificationService;
         }
 
         public async Task Handle(CancelShipmentCommand request, CancellationToken cancellationToken)
@@ -62,6 +65,13 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
                 {
                     throw new UnauthorizedAccessException("You are not allowed to cancel this shipment.");
                 }
+            }
+
+            var customer = await _customerRepository.GetByIdAsync(shipment.CustomerId, cancellationToken);
+
+            if (customer is null)
+            {
+                throw new KeyNotFoundException("Customer not found.");
             }
 
             if (!ShipmentStatusTransitionValidator.CanTransition(shipment.Status, ShipmentStatus.Cancelled))
@@ -95,6 +105,13 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
             }
 
             await _statusHistoryService.AddAsync(shipment, ShipmentStatus.Cancelled, _currentUserService.UserId, cancellationToken);
+
+            await _notificationService.CreateAsync(
+                customer.UserId,
+                "Shipment Cancelled",
+                $"Shipment {shipment.TrackingNumber} has been cancelled.",
+                NotificationType.ShipmentCancelled,
+                cancellationToken);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }

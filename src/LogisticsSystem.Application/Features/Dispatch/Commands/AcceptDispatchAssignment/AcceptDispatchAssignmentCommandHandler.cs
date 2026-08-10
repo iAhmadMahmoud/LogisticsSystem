@@ -16,6 +16,7 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.AcceptDispatchA
         private readonly IGenericRepository<Shipment> _shipmentRepository;
         private readonly IShipmentStatusHistoryService _shipmentStatusHistoryService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
         private readonly IUnitOfWork _unitOfWork;
 
         public AcceptDispatchAssignmentCommandHandler(
@@ -24,7 +25,8 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.AcceptDispatchA
             IGenericRepository<Shipment> shipmentRepository,
             IShipmentStatusHistoryService shipmentStatusHistoryService,
             ICurrentUserService currentUserService,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            INotificationService notificationService)
         {
             _dispatchAssignmentRepository = dispatchAssignmentRepository;
             _driverRepository = driverRepository;
@@ -32,6 +34,7 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.AcceptDispatchA
             _shipmentStatusHistoryService = shipmentStatusHistoryService;
             _currentUserService = currentUserService;
             _unitOfWork = unitOfWork;
+            _notificationService = notificationService;
         }
 
         public async Task Handle(AcceptDispatchAssignmentCommand request, CancellationToken cancellationToken)
@@ -115,7 +118,10 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.AcceptDispatchA
                 _currentUserService.UserId,
                 cancellationToken);
 
-            // 11. Commit all changes in one transaction
+            // 11. Create notification 
+            await _notificationService.CreateAsync(driver.UserId, "Shipment Assigned", $"Shipment {shipment.TrackingNumber} has been assigned to you.", NotificationType.ShipmentAssigned, cancellationToken);
+
+            // 12. Commit all changes in one transaction
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
     }
