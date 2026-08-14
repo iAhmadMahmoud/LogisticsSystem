@@ -28,7 +28,7 @@ namespace LogisticsSystem.Application.Features.Dispatch.Queries.GetAssignmentHis
                 x.ShipmentId,
                 x.DriverId,
                 x.AttemptNumber,
-                x.Status.ToString(),
+                x.Status,
                 x.SentAt,
                 x.RespondedAt))
                 .ToList();

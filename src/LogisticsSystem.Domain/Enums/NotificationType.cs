@@ -10,7 +10,8 @@
         AssignmentAccepted,
         AssignmentRejected,
         AssignmentExpired,
-        NoDriverAvailable
+        NoDriverAvailable,
+        ShipmentPickedUp
 
     }
 }

@@ -9,13 +9,15 @@ namespace LogisticsSystem.Infrastructure.Services
     public sealed class DispatchAssignmentService : IDispatchAssignmentService
     {
         private readonly IGenericRepository<DispatchAssignment> _assignmentRepository;
+        private readonly INotificationService _notificationService;
         private readonly IUnitOfWork _unitOfWork;
 
 
-        public DispatchAssignmentService(IGenericRepository<DispatchAssignment> assignmentRepository, IUnitOfWork unitOfWork)
+        public DispatchAssignmentService(IGenericRepository<DispatchAssignment> assignmentRepository, IUnitOfWork unitOfWork, INotificationService notificationService)
         {
             _assignmentRepository = assignmentRepository;
             _unitOfWork = unitOfWork;
+            _notificationService = notificationService;
         }
 
         public async Task<DispatchAssignment?> CreateAssignmentAsync(Shipment shipment, Driver driver, CancellationToken cancellationToken = default)
@@ -35,6 +37,13 @@ namespace LogisticsSystem.Infrastructure.Services
 
             await _assignmentRepository.AddAsync(assignment, cancellationToken);
 
+
+            await _notificationService.CreateAsync(
+                driver.UserId,
+                "New Shipment Assignment",
+                $"You have a new shipment assignment: {shipment.TrackingNumber}.",
+                NotificationType.DispatchAssignmentReceived,
+                cancellationToken);
 
             return assignment;
         }

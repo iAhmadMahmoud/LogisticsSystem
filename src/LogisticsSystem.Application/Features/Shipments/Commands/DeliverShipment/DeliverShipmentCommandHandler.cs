@@ -80,6 +80,12 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.DeliverShipmen
                 cancellationToken);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            await _notificationService.SendRealtimeAsync(
+                customer.UserId,
+                "Shipment Delivered",
+                $"Shipment {shipment.TrackingNumber} has been delivered successfully.",
+                cancellationToken);
         }
     }
 }

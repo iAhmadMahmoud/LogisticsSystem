@@ -13,7 +13,6 @@
 
   <ItemGroup>
     <Folder Include="Notifications\" />
-    <Folder Include="SignalR\" />
   </ItemGroup>
 
   <ItemGroup>

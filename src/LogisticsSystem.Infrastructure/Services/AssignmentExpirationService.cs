@@ -19,8 +19,9 @@ namespace LogisticsSystem.Infrastructure.Services
         private readonly INearestDriverService _nearestDriverService;
         private readonly IDispatchAssignmentService _dispatchAssignmentService;
         private readonly IGenericRepository<Driver> _driverRepository;
+        private readonly INotificationService _notificationService;
 
-        public AssignmentExpirationService(IGenericRepository<DispatchAssignment> assignmentRepository, IUnitOfWork unitOfWork, IOptions<DispatchOptions> options, ILogger<AssignmentExpirationService> logger, INearestDriverService nearestDriverService, IDispatchAssignmentService dispatchAssignmentService, IGenericRepository<Driver> driverRepository)
+        public AssignmentExpirationService(IGenericRepository<DispatchAssignment> assignmentRepository, IUnitOfWork unitOfWork, IOptions<DispatchOptions> options, ILogger<AssignmentExpirationService> logger, INearestDriverService nearestDriverService, IDispatchAssignmentService dispatchAssignmentService, IGenericRepository<Driver> driverRepository, INotificationService notificationService)
         {
             _assignmentRepository = assignmentRepository;
             _unitOfWork = unitOfWork;
@@ -29,6 +30,7 @@ namespace LogisticsSystem.Infrastructure.Services
             _nearestDriverService = nearestDriverService;
             _dispatchAssignmentService = dispatchAssignmentService;
             _driverRepository = driverRepository;
+            _notificationService = notificationService;
         }
 
         public async Task ExpireAssignmentsAsync(CancellationToken cancellationToken = default)
@@ -41,6 +43,9 @@ namespace LogisticsSystem.Infrastructure.Services
 
             if (assignments.Count == 0)
                 return;
+
+
+            var realtimeNotifications = new List<(Guid UserId, string Title, string Message)>();
 
             var now = DateTime.UtcNow;
 
@@ -76,6 +81,11 @@ namespace LogisticsSystem.Infrastructure.Services
 
                 await _dispatchAssignmentService.CreateAssignmentAsync(shipment, driver, cancellationToken);
 
+                realtimeNotifications.Add((driver.UserId,
+                    "New Shipment Assignment",
+                    $"You have received a new shipment assignment for shipment {shipment.TrackingNumber}."
+                ));
+
                 _logger.LogInformation(
                     "Shipment {ShipmentId} reassigned to driver {DriverId} after assignment {AssignmentId} expired.",
                     shipment.Id,
@@ -84,6 +94,15 @@ namespace LogisticsSystem.Infrastructure.Services
             }
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            foreach (var notification in realtimeNotifications)
+            {
+                await _notificationService.SendRealtimeAsync(
+                    notification.UserId,
+                    notification.Title,
+                    notification.Message,
+                    cancellationToken);
+            }
 
             _logger.LogInformation("Expired {Count} dispatch assignments.", assignments.Count);
         }

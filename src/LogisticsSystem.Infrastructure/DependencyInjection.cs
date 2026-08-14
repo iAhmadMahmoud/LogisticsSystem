@@ -12,13 +12,16 @@ using LogisticsSystem.Infrastructure.Identity;
 using LogisticsSystem.Infrastructure.Persistence;
 using LogisticsSystem.Infrastructure.Persistence.Repositories;
 using LogisticsSystem.Infrastructure.Services;
+using LogisticsSystem.Infrastructure.SignalR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 using System.Text;
 
 namespace LogisticsSystem.Infrastructure
@@ -41,6 +44,10 @@ namespace LogisticsSystem.Infrastructure
                 config.UseSqlServerStorage(
                     configuration.GetConnectionString("LogisticsSystem"));
             });
+
+            services.AddSignalR();
+
+
 
             services.AddHangfireServer();
 
@@ -105,12 +112,29 @@ namespace LogisticsSystem.Infrastructure
                         IssuerSigningKey = new SymmetricSecurityKey(
                             Encoding.UTF8.GetBytes(jwt.SecretKey)),
 
+                        NameClaimType = ClaimTypes.NameIdentifier,
+                        RoleClaimType = ClaimTypes.Role,
+
                         ClockSkew = TimeSpan.Zero
                     };
 
                     // ── TEMPORARY DIAGNOSTICS ── remove after root cause is confirmed ──
                     options.Events = new JwtBearerEvents
                     {
+                        OnMessageReceived = context =>
+                        {
+                            var accessToken = context.Request.Query["access_token"];
+
+                            var path = context.HttpContext.Request.Path;
+
+                            if (!string.IsNullOrEmpty(accessToken) &&
+                                path.StartsWithSegments("/hubs/notifications"))
+                            {
+                                context.Token = accessToken;
+                            }
+
+                            return Task.CompletedTask;
+                        },
                         OnAuthenticationFailed = context =>
                         {
                             var logger = context.HttpContext.RequestServices
@@ -160,8 +184,12 @@ namespace LogisticsSystem.Infrastructure
             services.AddScoped<IAssignmentExpirationService, AssignmentExpirationService>();
             services.AddScoped<INearestDriverService, NearestDriverService>();
             services.AddScoped<IDispatchAssignmentService, DispatchAssignmentService>();
+            services.AddScoped<IShipmentAssignmentScheduler, ShipmentAssignmentScheduler>();
+            services.AddScoped<ShipmentAssignmentJob>();
             services.AddScoped<INotificationService, NotificationService>();
-            services.AddHostedService<ShipmentAssignmentWorker>();
+            services.AddScoped<INotificationRealtimeService, NotificationRealtimeService>();
+            services.AddSingleton<IUserIdProvider, UserIdProvider>();
+            //services.AddHostedService<ShipmentAssignmentWorker>();
 
             return services;
         }

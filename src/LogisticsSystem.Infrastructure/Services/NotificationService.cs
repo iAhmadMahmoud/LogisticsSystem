@@ -12,11 +12,13 @@ namespace LogisticsSystem.Infrastructure.Services
     public sealed class NotificationService : INotificationService
     {
         private readonly IGenericRepository<Notification> _notificationRepository;
+        private readonly INotificationRealtimeService _notificationRealtimeService;
         private readonly IUnitOfWork _unitOfWork;
-        public NotificationService(IGenericRepository<Notification> notificationRepository, IUnitOfWork unitOfWork)
+        public NotificationService(IGenericRepository<Notification> notificationRepository, IUnitOfWork unitOfWork, INotificationRealtimeService notificationRealtimeService)
         {
             _notificationRepository = notificationRepository;
             _unitOfWork = unitOfWork;
+            _notificationRealtimeService = notificationRealtimeService;
         }
 
         public async Task CreateAsync(Guid userId, string title, string message, NotificationType type, CancellationToken cancellationToken = default)
@@ -90,6 +92,11 @@ namespace LogisticsSystem.Infrastructure.Services
             _notificationRepository.Update(notification);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        public async Task SendRealtimeAsync(Guid userId, string title, string message, CancellationToken cancellationToken = default)
+        {
+            await _notificationRealtimeService.SendAsync(userId, title, message, cancellationToken);
         }
     }
 }

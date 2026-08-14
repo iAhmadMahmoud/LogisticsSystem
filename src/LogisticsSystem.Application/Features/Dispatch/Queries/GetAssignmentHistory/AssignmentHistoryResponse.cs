@@ -1,11 +1,13 @@
-﻿namespace LogisticsSystem.Application.Features.Dispatch.Queries.GetAssignmentHistory
+﻿using LogisticsSystem.Domain.Enums;
+
+namespace LogisticsSystem.Application.Features.Dispatch.Queries.GetAssignmentHistory
 {
     public sealed record AssignmentHistoryResponse(
                 Guid AssignmentId,
         Guid ShipmentId,
         Guid DriverId,
         int AttemptNumber,
-        string Status,
+        AssignmentStatus Status,
         DateTime SentAt,
         DateTime? RespondedAt
         );

@@ -9,11 +9,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LogisticsSystem.Application.Features.Dispatch.Commands.AcceptDispatchAssignment
 {
-    public sealed class AcceptDispatchAssignmentCommandHandler : IRequestHandler<AcceptDispatchAssignmentCommand>
+    public sealed class AcceptDispatchAssignmentCommandHandler
+        : IRequestHandler<AcceptDispatchAssignmentCommand>
     {
         private readonly IGenericRepository<DispatchAssignment> _dispatchAssignmentRepository;
         private readonly IGenericRepository<Driver> _driverRepository;
         private readonly IGenericRepository<Shipment> _shipmentRepository;
+        private readonly IGenericRepository<Customer> _customerRepository;
         private readonly IShipmentStatusHistoryService _shipmentStatusHistoryService;
         private readonly ICurrentUserService _currentUserService;
         private readonly INotificationService _notificationService;
@@ -23,106 +25,153 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.AcceptDispatchA
             IGenericRepository<DispatchAssignment> dispatchAssignmentRepository,
             IGenericRepository<Driver> driverRepository,
             IGenericRepository<Shipment> shipmentRepository,
+            IGenericRepository<Customer> customerRepository,
             IShipmentStatusHistoryService shipmentStatusHistoryService,
             ICurrentUserService currentUserService,
-            IUnitOfWork unitOfWork,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            IUnitOfWork unitOfWork)
         {
             _dispatchAssignmentRepository = dispatchAssignmentRepository;
             _driverRepository = driverRepository;
             _shipmentRepository = shipmentRepository;
+            _customerRepository = customerRepository;
             _shipmentStatusHistoryService = shipmentStatusHistoryService;
             _currentUserService = currentUserService;
-            _unitOfWork = unitOfWork;
             _notificationService = notificationService;
+            _unitOfWork = unitOfWork;
         }
 
-        public async Task Handle(AcceptDispatchAssignmentCommand request, CancellationToken cancellationToken)
+        public async Task Handle(
+            AcceptDispatchAssignmentCommand request,
+            CancellationToken cancellationToken)
         {
             // 1. Load the dispatch assignment
-            var assignment = await _dispatchAssignmentRepository.GetByIdAsync(request.AssignmentId, cancellationToken);
+            var assignment = await _dispatchAssignmentRepository
+                .GetByIdAsync(
+                    request.AssignmentId,
+                    cancellationToken);
 
             if (assignment is null)
             {
-                throw new KeyNotFoundException("Dispatch assignment not found.");
+                throw new KeyNotFoundException(
+                    "Dispatch assignment not found.");
             }
 
-            // 2. Only a Pending assignment can be accepted
+            // 2. Only pending assignments can be accepted
             if (assignment.Status != AssignmentStatus.Pending)
             {
                 throw new InvalidOperationException(
                     $"Dispatch assignment cannot be accepted because its status is '{assignment.Status}'.");
             }
 
-            // 3. Load the current driver profile
+            // 3. Load the current driver
             var driver = await _driverRepository
                 .AsQueryable()
-                .FirstOrDefaultAsync(x => x.UserId == _currentUserService.UserId, cancellationToken);
+                .FirstOrDefaultAsync(
+                    x => x.UserId == _currentUserService.UserId,
+                    cancellationToken);
 
             if (driver is null)
             {
-                throw new UnauthorizedAccessException("Driver profile not found.");
+                throw new UnauthorizedAccessException(
+                    "Driver profile not found.");
             }
 
-            // 4. Ensure the assignment belongs to the current driver
+            // 4. Verify that the assignment belongs to this driver
             if (assignment.DriverId != driver.Id)
             {
-                throw new UnauthorizedAccessException("You are not authorized to accept this dispatch assignment.");
+                throw new UnauthorizedAccessException(
+                    "You are not authorized to accept this dispatch assignment.");
             }
 
-            // 5. Load the shipment associated with this assignment
-            var shipment = await _shipmentRepository.GetByIdAsync(assignment.ShipmentId, cancellationToken);
+            // 5. Load the shipment
+            var shipment = await _shipmentRepository
+                .GetByIdAsync(
+                    assignment.ShipmentId,
+                    cancellationToken);
 
             if (shipment is null)
             {
-                throw new KeyNotFoundException("Shipment not found.");
+                throw new KeyNotFoundException(
+                    "Shipment not found.");
             }
 
-            // 6. Verify the shipment can still transition to Assigned
-            if (!ShipmentStatusTransitionValidator.CanTransition(shipment.Status, ShipmentStatus.Assigned))
+            // 6. Verify shipment status transition
+            if (!ShipmentStatusTransitionValidator.CanTransition(
+                    shipment.Status,
+                    ShipmentStatus.Assigned))
             {
                 throw new InvalidOperationException(
                     $"Shipment cannot transition from '{shipment.Status}' to 'Assigned'.");
             }
 
-            // 7. Verify the shipment does not already have a driver (another offer was accepted first)
+            // 7. Make sure another driver hasn't already accepted it
             if (shipment.DriverId is not null)
             {
-                throw new InvalidOperationException("Shipment already has an accepted driver assignment.");
+                throw new InvalidOperationException(
+                    "Shipment already has an accepted driver assignment.");
             }
 
-            // 8. Verify the driver is still available
+            // 8. Verify driver availability
             if (driver.Status != DriverStatus.Available)
             {
-                throw new InvalidOperationException("Driver is no longer available.");
+                throw new InvalidOperationException(
+                    "Driver is no longer available.");
             }
 
-            // 9. Atomically finalize the assignment
+            // 9. Load the customer
+            var customer = await _customerRepository
+                .GetByIdAsync(
+                    shipment.CustomerId,
+                    cancellationToken);
+
+            if (customer is null)
+            {
+                throw new KeyNotFoundException(
+                    "Customer not found.");
+            }
+
+            // 10. Accept the assignment
             assignment.Status = AssignmentStatus.Accepted;
             assignment.RespondedAt = DateTime.UtcNow;
 
+            // 11. Assign the driver to the shipment
             shipment.DriverId = driver.Id;
             shipment.Status = ShipmentStatus.Assigned;
             shipment.AssignedAt = DateTime.UtcNow;
 
+            // 12. Mark driver as busy
             driver.Status = DriverStatus.Busy;
 
             _dispatchAssignmentRepository.Update(assignment);
             _shipmentRepository.Update(shipment);
             _driverRepository.Update(driver);
 
-            // 10. Record the shipment status change
+            // 13. Record shipment status history
             await _shipmentStatusHistoryService.AddAsync(
                 shipment,
                 ShipmentStatus.Assigned,
                 _currentUserService.UserId,
                 cancellationToken);
 
-            // 11. Create notification 
-            await _notificationService.CreateAsync(driver.UserId, "Shipment Assigned", $"Shipment {shipment.TrackingNumber} has been assigned to you.", NotificationType.ShipmentAssigned, cancellationToken);
+            // 14. Create notification for the customer
+            await _notificationService.CreateAsync(
+                customer.UserId,
+                "Shipment Assigned",
+                $"Shipment {shipment.TrackingNumber} has been assigned to a driver.",
+                NotificationType.ShipmentAssigned,
+                cancellationToken);
 
-            // 12. Commit all changes in one transaction
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            // 15. Save everything first
+            await _unitOfWork.SaveChangesAsync(
+                cancellationToken);
+
+            // 16. Send realtime notification to customer
+            await _notificationService.SendRealtimeAsync(
+                customer.UserId,
+                "Shipment Assigned",
+                $"Shipment {shipment.TrackingNumber} has been assigned to a driver.",
+                cancellationToken);
         }
     }
 }
