@@ -1,6 +1,9 @@
+using Hangfire;
 using LogisticsSystem.Api.Common.Extensions;
 using LogisticsSystem.Application;
+using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Infrastructure;
+using LogisticsSystem.Infrastructure.SignalR;
 using Microsoft.OpenApi;
 
 namespace LogisticsSystem.Api;
@@ -11,7 +14,12 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        builder.Services.AddControllers();
+        builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+         {
+             options.JsonSerializerOptions.Converters.Add(
+                 new System.Text.Json.Serialization.JsonStringEnumConverter());
+         });
 
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen(options =>
@@ -47,6 +55,9 @@ public class Program
 
         var app = builder.Build();
 
+        app.UseHangfireDashboard("/hangfire");
+        RecurringJob.AddOrUpdate<IAssignmentExpirationService>("expire-dispatch-assignments", service => service.ExpireAssignmentsAsync(CancellationToken.None), Cron.Minutely);
+
         using (var scope = app.Services.CreateScope())
         {
             var dbInitializer = scope.ServiceProvider.GetRequiredService<LogisticsSystem.Infrastructure.Persistence.Seed.DbInitializer>();
@@ -67,7 +78,10 @@ public class Program
 
         app.UseAuthorization();
 
+
         app.MapControllers();
+
+        app.MapHub<NotificationHub>("/hubs/notifications");
 
         app.Run();
     }

@@ -7,6 +7,6 @@ namespace LogisticsSystem.Application.Common.Interfaces.Services
 {
     public interface IDriverAssignmentService
     {
-        Task<Driver?> FindBestAvailableDriverAsync(double pickupLatitude, double pickupLongitude, CancellationToken cancellationToken = default);
+        Task<Driver?> FindBestAvailableDriverAsync(Shipment shipment, CancellationToken cancellationToken = default);
     }
 }

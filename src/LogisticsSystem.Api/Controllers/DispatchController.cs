@@ -1,9 +1,9 @@
 ﻿using LogisticsSystem.Application.Authorization;
 using LogisticsSystem.Application.Features.Dispatch.Commands.AcceptDispatchAssignment;
 using LogisticsSystem.Application.Features.Dispatch.Commands.RejectDispatchAssignment;
+using LogisticsSystem.Application.Features.Dispatch.Queries.GetMyAssignments;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LogisticsSystem.Api.Controllers
@@ -26,7 +26,7 @@ namespace LogisticsSystem.Api.Controllers
             Guid assignmentId,
             CancellationToken cancellationToken)
         {
-            await _sender.Send( new AcceptDispatchAssignmentCommand(assignmentId), cancellationToken);
+            await _sender.Send(new AcceptDispatchAssignmentCommand(assignmentId), cancellationToken);
 
             return NoContent();
         }
@@ -38,6 +38,15 @@ namespace LogisticsSystem.Api.Controllers
             await _sender.Send(new RejectDispatchAssignmentCommand(assignmentId), cancellationToken);
 
             return NoContent();
+        }
+
+        [Authorize(Policy =Policies.DriverUpdateStatus)]
+        [HttpGet("my-assignments")]
+        public async Task<IActionResult> GetMyAssignments([FromQuery] GetMyAssignmentsQuery query,CancellationToken cancellationToken)
+        {
+            var result = await _sender.Send(query,cancellationToken);
+
+            return Ok(result);
         }
     }
 }

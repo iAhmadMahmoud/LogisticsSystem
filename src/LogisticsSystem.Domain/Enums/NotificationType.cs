@@ -5,7 +5,13 @@
         ShipmentAssigned,
         ShipmentDelivered,
         ShipmentCancelled,
-        DriverArrived
+        DriverArrived,
+        DispatchAssignmentReceived,
+        AssignmentAccepted,
+        AssignmentRejected,
+        AssignmentExpired,
+        NoDriverAvailable,
+        ShipmentPickedUp
 
     }
 }

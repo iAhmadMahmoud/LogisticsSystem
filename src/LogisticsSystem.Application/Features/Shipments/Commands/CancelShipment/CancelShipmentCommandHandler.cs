@@ -18,6 +18,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
         private readonly IShipmentStatusHistoryService _statusHistoryService;
         private readonly ICurrentUserService _currentUserService;
         private readonly IGenericRepository<Customer> _customerRepository;
+        private readonly INotificationService _notificationService;
         private readonly IUnitOfWork _unitOfWork;
 
         public CancelShipmentCommandHandler(
@@ -26,7 +27,8 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
             IShipmentStatusHistoryService statusHistoryService,
             IGenericRepository<Driver> driverRepository,
             IUnitOfWork unitOfWork,
-            IGenericRepository<Customer> customerRepository)
+            IGenericRepository<Customer> customerRepository,
+            INotificationService notificationService)
         {
             _shipmentsRepository = shipmentsRepository;
             _currentUserService = currentUserService;
@@ -34,6 +36,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
             _driverRepository = driverRepository;
             _unitOfWork = unitOfWork;
             _customerRepository = customerRepository;
+            _notificationService = notificationService;
         }
 
         public async Task Handle(CancelShipmentCommand request, CancellationToken cancellationToken)
@@ -44,10 +47,10 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
             {
                 throw new KeyNotFoundException("Shipment not found.");
             }
-
+            Customer? customer;
             if (_currentUserService.IsInRole(Roles.Customer))
             {
-                var customer = await _customerRepository.FirstOrDefaultAsync(
+                 customer = await _customerRepository.FirstOrDefaultAsync(
                     new CustomerByUserIdSpecification(
                         _currentUserService.UserId),
                     cancellationToken);
@@ -64,6 +67,13 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
                 }
             }
 
+             customer = await _customerRepository.GetByIdAsync(shipment.CustomerId, cancellationToken);
+
+            if (customer is null)
+            {
+                throw new KeyNotFoundException("Customer not found.");
+            }
+
             if (!ShipmentStatusTransitionValidator.CanTransition(shipment.Status, ShipmentStatus.Cancelled))
             {
                 throw new InvalidOperationException($"Shipment cannot transtion from {shipment.Status} to Cancelled.");
@@ -75,7 +85,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
             shipment.CancelledAt = DateTime.UtcNow;
 
             _shipmentsRepository.Update(shipment);
-
+            Driver? driver = null;
             if (wasAssigned)
             {
                 if (shipment.DriverId is null)
@@ -83,7 +93,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
                     throw new InvalidOperationException("Assigned shipment has no driver.");
                 }
 
-                var driver = await _driverRepository.GetByIdAsync(shipment.DriverId.Value, cancellationToken);
+                driver = await _driverRepository.GetByIdAsync(shipment.DriverId.Value, cancellationToken);
 
                 if (driver is null)
                 {
@@ -96,7 +106,39 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
 
             await _statusHistoryService.AddAsync(shipment, ShipmentStatus.Cancelled, _currentUserService.UserId, cancellationToken);
 
+            await _notificationService.CreateAsync(
+                customer.UserId,
+                "Shipment Cancelled",
+                $"Shipment {shipment.TrackingNumber} has been cancelled.",
+                NotificationType.ShipmentCancelled,
+                cancellationToken);
+
+            if (driver is not null)
+            {
+                await _notificationService.CreateAsync(
+                    driver.UserId,
+                    "Shipment Cancelled",
+                    $"Shipment {shipment.TrackingNumber} has been cancelled by the customer.",
+                    NotificationType.ShipmentCancelled,
+                    cancellationToken);
+            }
+
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            await _notificationService.SendRealtimeAsync(
+                customer.UserId,
+                "Shipment Cancelled",
+                $"Shipment {shipment.TrackingNumber} has been cancelled.",
+                cancellationToken);
+
+            if (driver is not null)
+            {
+                await _notificationService.SendRealtimeAsync(
+                    driver.UserId,
+                    "Shipment Cancelled",
+                    $"Shipment {shipment.TrackingNumber} has been cancelled by the customer.",
+                    cancellationToken);
+            }
         }
     }
 }

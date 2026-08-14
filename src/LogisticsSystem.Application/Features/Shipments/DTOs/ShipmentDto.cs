@@ -16,7 +16,9 @@ namespace LogisticsSystem.Application.Features.Shipments.DTOs
 
         public DateTime? AssignedAt { get; set; }
         public DateTime ScheduledAt { get; init; }
-
+        public DateTime? PickedUpAt { get; set; }
+        public DateTime? DeliveredAt { get; set; }
+        public DateTime? CancelledAt { get; set; }
 
     }
 }

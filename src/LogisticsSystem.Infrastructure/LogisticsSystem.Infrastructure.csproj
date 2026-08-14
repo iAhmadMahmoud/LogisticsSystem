@@ -13,10 +13,11 @@
 
   <ItemGroup>
     <Folder Include="Notifications\" />
-    <Folder Include="SignalR\" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.24" />
+    <PackageReference Include="Hangfire.SqlServer" Version="1.8.24" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.11" />

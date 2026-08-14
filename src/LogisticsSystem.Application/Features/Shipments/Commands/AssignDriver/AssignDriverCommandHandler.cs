@@ -1,4 +1,5 @@
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Application.Features.Dispatch.Specifications;
 using LogisticsSystem.Application.Features.Shipments.Helpers;
 using LogisticsSystem.Domain.Entities;
@@ -13,18 +14,21 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver
         private readonly IGenericRepository<Shipment> _shipmentRepository;
         private readonly IGenericRepository<Driver> _driverRepository;
         private readonly IGenericRepository<DispatchAssignment> _dispatchAssignmentRepository;
+        private readonly INotificationService _notificationService;
         private readonly IUnitOfWork _unitOfWork;
 
         public AssignDriverCommandHandler(
             IGenericRepository<Shipment> shipmentRepository,
             IGenericRepository<Driver> driverRepository,
             IGenericRepository<DispatchAssignment> dispatchAssignmentRepository,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            INotificationService notificationService)
         {
             _shipmentRepository = shipmentRepository;
             _driverRepository = driverRepository;
             _dispatchAssignmentRepository = dispatchAssignmentRepository;
             _unitOfWork = unitOfWork;
+            _notificationService = notificationService;
         }
 
         public async Task Handle(AssignDriverCommand request, CancellationToken cancellationToken)
@@ -92,7 +96,20 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver
 
             await _dispatchAssignmentRepository.AddAsync(dispatchAssignment, cancellationToken);
 
+            await _notificationService.CreateAsync(
+                driver.UserId,
+                "New Shipment Assignment",
+                $"You have a new shipment assignment: {shipment.TrackingNumber}.",
+                NotificationType.DispatchAssignmentReceived,
+                cancellationToken);
+
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            await _notificationService.SendRealtimeAsync(
+                driver.UserId,
+                "New Shipment Assignment",
+                $"You have a new shipment assignment: {shipment.TrackingNumber}.",
+                cancellationToken);
         }
     }
 }

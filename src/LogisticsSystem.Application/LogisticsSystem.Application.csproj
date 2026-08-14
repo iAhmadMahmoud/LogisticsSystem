@@ -18,7 +18,6 @@
     <Folder Include="Authentication\Validators\" />
     <Folder Include="Common\Mappings\" />
     <Folder Include="Common\Specifications\" />
-    <Folder Include="Features\Notifications\" />
   </ItemGroup>
 
   <ItemGroup>

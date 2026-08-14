@@ -15,14 +15,18 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.DeliverShipmen
         private readonly IGenericRepository<Driver> _driverRepository;
         private readonly IShipmentStatusHistoryService _statusHistoryService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IGenericRepository<Customer> _customerRepository;
+        private readonly INotificationService _notificationService;
         private readonly IUnitOfWork _unitOfWork;
-        public DeliverShipmentCommandHandler(IGenericRepository<Shipment> shipmentRepository, IUnitOfWork unitOfWork, IGenericRepository<Driver> driverRepository, IShipmentStatusHistoryService statusHistoryService, ICurrentUserService currentUserService)
+        public DeliverShipmentCommandHandler(IGenericRepository<Shipment> shipmentRepository, IUnitOfWork unitOfWork, IGenericRepository<Driver> driverRepository, IShipmentStatusHistoryService statusHistoryService, ICurrentUserService currentUserService, IGenericRepository<Customer> customerRepository, INotificationService notificationService)
         {
             _shipmentRepository = shipmentRepository;
             _unitOfWork = unitOfWork;
             _driverRepository = driverRepository;
             _statusHistoryService = statusHistoryService;
             _currentUserService = currentUserService;
+            _customerRepository = customerRepository;
+            _notificationService = notificationService;
         }
 
         public async Task Handle(DeliverShipmentCommand request, CancellationToken cancellationToken)
@@ -35,7 +39,12 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.DeliverShipmen
             if (shipment.DriverId is null)
                 throw new InvalidOperationException("Shipment has no assigned driver.");
 
-        
+            var customer = await _customerRepository.GetByIdAsync(shipment.CustomerId, cancellationToken);
+
+            if (customer is null)
+            {
+                throw new KeyNotFoundException("Customer not found.");
+            }
 
             var currentDriver = await _driverRepository.AsQueryable().FirstOrDefaultAsync(d => d.UserId == _currentUserService.UserId, cancellationToken);
 
@@ -63,7 +72,20 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.DeliverShipmen
 
             await _statusHistoryService.AddAsync(shipment, ShipmentStatus.Delivered, _currentUserService.UserId, cancellationToken);
 
+            await _notificationService.CreateAsync(
+                customer.UserId,
+                "Shipment Delivered",
+                $"Shipment {shipment.TrackingNumber} has been delivered successfully.",
+                NotificationType.ShipmentDelivered,
+                cancellationToken);
+
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            await _notificationService.SendRealtimeAsync(
+                customer.UserId,
+                "Shipment Delivered",
+                $"Shipment {shipment.TrackingNumber} has been delivered successfully.",
+                cancellationToken);
         }
     }
 }
