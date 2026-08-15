@@ -1,5 +1,6 @@
 ﻿using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
 using MediatR;
@@ -7,56 +8,108 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LogisticsSystem.Application.Features.Dispatch.Commands.RejectDispatchAssignment
 {
-    public sealed class RejectDispatchAssignmentCommandHandler : IRequestHandler<RejectDispatchAssignmentCommand>
+    public sealed class RejectDispatchAssignmentCommandHandler
+        : IRequestHandler<RejectDispatchAssignmentCommand>
     {
         private readonly IGenericRepository<DispatchAssignment> _dispatchAssignmentRepository;
         private readonly IGenericRepository<Driver> _driverRepository;
+        private readonly IGenericRepository<Shipment> _shipmentRepository;
         private readonly ICurrentUserService _currentUserService;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IDriverAssignmentService _driverAssignmentService;
+        private readonly IDispatchAssignmentService _dispatchAssignmentService;
 
         public RejectDispatchAssignmentCommandHandler(
             IGenericRepository<DispatchAssignment> dispatchAssignmentRepository,
             IGenericRepository<Driver> driverRepository,
+            IGenericRepository<Shipment> shipmentRepository,
             ICurrentUserService currentUserService,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            IDriverAssignmentService driverAssignmentService,
+            IDispatchAssignmentService dispatchAssignmentService)
         {
             _dispatchAssignmentRepository = dispatchAssignmentRepository;
             _driverRepository = driverRepository;
+            _shipmentRepository = shipmentRepository;
             _currentUserService = currentUserService;
             _unitOfWork = unitOfWork;
+            _driverAssignmentService = driverAssignmentService;
+            _dispatchAssignmentService = dispatchAssignmentService;
         }
 
-        public async Task Handle(RejectDispatchAssignmentCommand request, CancellationToken cancellationToken)
+        public async Task Handle(
+            RejectDispatchAssignmentCommand request,
+            CancellationToken cancellationToken)
         {
-            var assignment = await _dispatchAssignmentRepository.GetByIdAsync(request.AssignmentId, cancellationToken);
+            // 1. Load assignment
+            var assignment = await _dispatchAssignmentRepository
+                .GetByIdAsync(request.AssignmentId, cancellationToken);
+
             if (assignment is null)
             {
-                throw new KeyNotFoundException("Dispatch assignment not found.");
+                throw new KeyNotFoundException(
+                    "Dispatch assignment not found.");
             }
 
+            // 2. Make sure assignment is still pending
             if (assignment.Status != AssignmentStatus.Pending)
             {
-                throw new InvalidOperationException($"Dispatch assignment cannot be rejected because its status is {assignment.Status}.");
+                throw new InvalidOperationException(
+                    $"Dispatch assignment cannot be rejected because its status is {assignment.Status}.");
             }
 
-            var driver = await _driverRepository.AsQueryable().FirstOrDefaultAsync(x => x.UserId == _currentUserService.UserId, cancellationToken);
+            // 3. Get current driver's profile
+            var driver = await _driverRepository
+                .AsQueryable()
+                .FirstOrDefaultAsync(
+                    x => x.UserId == _currentUserService.UserId,
+                    cancellationToken);
 
             if (driver is null)
             {
-                throw new UnauthorizedAccessException("Driver profile not found.");
+                throw new UnauthorizedAccessException(
+                    "Driver profile not found.");
             }
 
+            // 4. Make sure this assignment belongs to the current driver
             if (assignment.DriverId != driver.Id)
             {
-                throw new UnauthorizedAccessException("You are not authorized to reject this dispatch assignment.");
+                throw new UnauthorizedAccessException(
+                    "You are not authorized to reject this dispatch assignment.");
             }
 
-            assignment.Status = AssignmentStatus.Rejected;
+            // 5. Load shipment explicitly
+            var shipment = await _shipmentRepository
+                .GetByIdAsync(assignment.ShipmentId, cancellationToken);
 
+            if (shipment is null)
+            {
+                throw new KeyNotFoundException(
+                    "Shipment not found.");
+            }
+
+            // 6. Reject current assignment
+            assignment.Status = AssignmentStatus.Rejected;
             assignment.RespondedAt = DateTime.UtcNow;
 
             _dispatchAssignmentRepository.Update(assignment);
 
+            // 7. Find the next available driver
+            var nextDriver =
+                await _driverAssignmentService.FindBestAvailableDriverAsync(
+                    shipment,
+                    cancellationToken);
+
+            // 8. Create a new assignment if another driver is available
+            if (nextDriver is not null)
+            {
+                await _dispatchAssignmentService.CreateAssignmentAsync(
+                    shipment,
+                    nextDriver,
+                    cancellationToken);
+            }
+
+            // 9. Save rejection + new assignment
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
     }
