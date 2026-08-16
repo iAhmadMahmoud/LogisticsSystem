@@ -16,21 +16,21 @@ namespace LogisticsSystem.Infrastructure.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly DispatchOptions _options;
         private readonly ILogger<AssignmentExpirationService> _logger;
-        private readonly INearestDriverService _nearestDriverService;
         private readonly IDispatchAssignmentService _dispatchAssignmentService;
-        private readonly IGenericRepository<Driver> _driverRepository;
         private readonly INotificationService _notificationService;
+        private readonly IDriverAssignmentService _driverAssignmentService;
 
-        public AssignmentExpirationService(IGenericRepository<DispatchAssignment> assignmentRepository, IUnitOfWork unitOfWork, IOptions<DispatchOptions> options, ILogger<AssignmentExpirationService> logger, INearestDriverService nearestDriverService, IDispatchAssignmentService dispatchAssignmentService, IGenericRepository<Driver> driverRepository, INotificationService notificationService)
+        public AssignmentExpirationService(IGenericRepository<DispatchAssignment> assignmentRepository, IUnitOfWork unitOfWork, IOptions<DispatchOptions> options, ILogger<AssignmentExpirationService> logger, IDispatchAssignmentService dispatchAssignmentService, INotificationService notificationService,  IDriverAssignmentService driverAssignmentService)
         {
             _assignmentRepository = assignmentRepository;
             _unitOfWork = unitOfWork;
             _options = options.Value;
             _logger = logger;
-            _nearestDriverService = nearestDriverService;
+
             _dispatchAssignmentService = dispatchAssignmentService;
-            _driverRepository = driverRepository;
+
             _notificationService = notificationService;
+            _driverAssignmentService = driverAssignmentService;
         }
 
         public async Task ExpireAssignmentsAsync(CancellationToken cancellationToken = default)
@@ -58,23 +58,17 @@ namespace LogisticsSystem.Infrastructure.Services
 
                 var shipment = assignment.Shipment;
 
-                var nearestDriver = await _nearestDriverService.FindNerstAsync(shipment, cancellationToken);
+                var driver = await _driverAssignmentService
+     .FindBestAvailableDriverAsync(
+         shipment,
+         cancellationToken);
 
-                if (nearestDriver is null)
+                if (driver is null)
                 {
                     _logger.LogWarning(
                         "No available driver found for shipment {ShipmentId} after assignment {AssignmentId} expired.",
                         shipment.Id,
                         assignment.Id);
-
-                    continue;
-                }
-
-                var driver = await _driverRepository.GetByIdAsync(nearestDriver.DriverId, cancellationToken);
-
-                if (driver is null)
-                {
-                    _logger.LogWarning("Nearest driver {DriverId} could not be found for shipment {ShipmentId}.", nearestDriver.DriverId, shipment.Id);
 
                     continue;
                 }

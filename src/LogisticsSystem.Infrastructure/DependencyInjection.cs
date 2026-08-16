@@ -182,7 +182,7 @@ namespace LogisticsSystem.Infrastructure
             services.AddScoped<IShipmentStatusHistoryService,ShipmentStatusHistoryService>();
             services.AddScoped<IDriverAssignmentService, DriverAssignmentService>();
             services.AddScoped<IAssignmentExpirationService, AssignmentExpirationService>();
-            services.AddScoped<INearestDriverService, NearestDriverService>();
+
             services.AddScoped<IDispatchAssignmentService, DispatchAssignmentService>();
             services.AddScoped<IShipmentAssignmentScheduler, ShipmentAssignmentScheduler>();
             services.AddScoped<ShipmentAssignmentJob>();
