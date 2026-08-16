@@ -189,7 +189,6 @@ namespace LogisticsSystem.Infrastructure
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<INotificationRealtimeService, NotificationRealtimeService>();
             services.AddSingleton<IUserIdProvider, UserIdProvider>();
-            //services.AddHostedService<ShipmentAssignmentWorker>();
 
             return services;
         }
