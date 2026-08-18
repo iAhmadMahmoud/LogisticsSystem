@@ -10,6 +10,7 @@ using LogisticsSystem.Infrastructure.Authentication.Tokens;
 using LogisticsSystem.Infrastructure.BackgroundJobs;
 using LogisticsSystem.Infrastructure.Identity;
 using LogisticsSystem.Infrastructure.Persistence;
+using LogisticsSystem.Infrastructure.Persistence.Interceptors;
 using LogisticsSystem.Infrastructure.Persistence.Repositories;
 using LogisticsSystem.Infrastructure.Services;
 using LogisticsSystem.Infrastructure.SignalR;
@@ -34,9 +35,12 @@ namespace LogisticsSystem.Infrastructure
             IConfiguration configuration
             )
         {
-            services.AddDbContext<ApplicationDbContext>(option =>
+            services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
             {
-                option.UseSqlServer(configuration.GetConnectionString("LogisticsSystem"));
+                options.UseSqlServer(configuration.GetConnectionString("LogisticsSystem"));
+
+                options.AddInterceptors(serviceProvider.GetRequiredService<AuditSaveChangesInterceptor>());
+
             });
 
             services.AddHangfire(config =>
@@ -189,6 +193,8 @@ namespace LogisticsSystem.Infrastructure
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<INotificationRealtimeService, NotificationRealtimeService>();
             services.AddSingleton<IUserIdProvider, UserIdProvider>();
+
+            services.AddScoped<AuditSaveChangesInterceptor>();
 
             return services;
         }
