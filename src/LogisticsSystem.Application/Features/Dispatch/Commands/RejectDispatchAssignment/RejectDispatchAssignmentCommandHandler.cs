@@ -15,6 +15,8 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.RejectDispatchA
         private readonly IGenericRepository<DispatchAssignment> _dispatchAssignmentRepository;
         private readonly IGenericRepository<Driver> _driverRepository;
         private readonly IGenericRepository<Shipment> _shipmentRepository;
+        private readonly IGenericRepository<Customer> _customerRepository;
+        private readonly INotificationService _notificationService;
         private readonly ICurrentUserService _currentUserService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IDriverAssignmentService _driverAssignmentService;
@@ -24,6 +26,8 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.RejectDispatchA
             IGenericRepository<DispatchAssignment> dispatchAssignmentRepository,
             IGenericRepository<Driver> driverRepository,
             IGenericRepository<Shipment> shipmentRepository,
+            IGenericRepository<Customer> customerRepository,
+            INotificationService notificationService,
             ICurrentUserService currentUserService,
             IUnitOfWork unitOfWork,
             IDriverAssignmentService driverAssignmentService,
@@ -32,6 +36,8 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.RejectDispatchA
             _dispatchAssignmentRepository = dispatchAssignmentRepository;
             _driverRepository = driverRepository;
             _shipmentRepository = shipmentRepository;
+            _customerRepository = customerRepository;
+            _notificationService = notificationService;
             _currentUserService = currentUserService;
             _unitOfWork = unitOfWork;
             _driverAssignmentService = driverAssignmentService;
@@ -101,7 +107,7 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.RejectDispatchA
                     shipment,
                     cancellationToken);
 
-            // 8. Create a new assignment if another driver is available
+            // 8. Create a new assignment if another driver is available, otherwise notify customer
             if (nextDriver is not null)
             {
                 await _dispatchAssignmentService.CreateAssignmentAsync(
@@ -109,8 +115,30 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.RejectDispatchA
                     nextDriver,
                     cancellationToken);
             }
+            else
+            {
+                var customer = await _customerRepository.GetByIdAsync(
+                    shipment.CustomerId,
+                    cancellationToken);
 
-            // 9. Save rejection + new assignment
+                if (customer is not null)
+                {
+                    await _notificationService.CreateAsync(
+                        customer.UserId,
+                        "No Driver Available",
+                        $"Unable to find an available driver for shipment {shipment.TrackingNumber}.",
+                        NotificationType.NoDriverAvailable,
+                        cancellationToken);
+
+                    await _notificationService.SendRealtimeAsync(
+                        customer.UserId,
+                        "No Driver Available",
+                        $"Unable to find an available driver for shipment {shipment.TrackingNumber}.",
+                        cancellationToken);
+                }
+            }
+
+            // 9. Save rejection + new assignment or notification
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
     }
