@@ -20,6 +20,18 @@ namespace LogisticsSystem.Application
 
             services.AddTransient(
                 typeof(IPipelineBehavior<,>),
+                typeof(UnhandledExceptionBehavior<,>));
+
+            services.AddTransient(
+                typeof(IPipelineBehavior<,>),
+                typeof(PerformanceBehavior<,>));
+
+            services.AddTransient(
+                typeof(IPipelineBehavior<,>),
+                typeof(LoggingBehavior<,>));
+
+            services.AddTransient(
+                typeof(IPipelineBehavior<,>),
                 typeof(ValidationBehavior<,>));
 
             services.AddAutoMapper(cfg => cfg.AddMaps(typeof(DependencyInjection).Assembly));

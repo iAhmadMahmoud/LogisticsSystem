@@ -5,6 +5,7 @@ using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Infrastructure;
 using LogisticsSystem.Infrastructure.SignalR;
 using Microsoft.OpenApi;
+using Serilog;
 
 namespace LogisticsSystem.Api;
 
@@ -13,6 +14,19 @@ public class Program
     public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+
+        builder.Host.UseSerilog((context, services, configuration) =>
+        {
+            configuration
+                .ReadFrom.Configuration(context.Configuration)
+                .ReadFrom.Services(services)
+                .Enrich.FromLogContext()
+                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .WriteTo.File(
+                    path: "logs/log-.txt",
+                    rollingInterval: RollingInterval.Day,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}");
+        });
 
         builder.Services.AddControllers()
         .AddJsonOptions(options =>
@@ -54,6 +68,8 @@ public class Program
         builder.Services.AddProblemDetails();
 
         var app = builder.Build();
+
+        app.UseSerilogRequestLogging();
 
         app.UseHangfireDashboard("/hangfire");
         RecurringJob.AddOrUpdate<IAssignmentExpirationService>("expire-dispatch-assignments", service => service.ExpireAssignmentsAsync(CancellationToken.None), Cron.Minutely);
