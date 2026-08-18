@@ -1,4 +1,4 @@
-﻿using LogisticsSystem.Application.Authorization;
+using LogisticsSystem.Application.Authorization;
 using LogisticsSystem.Domain.Constants;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -31,6 +31,7 @@ namespace LogisticsSystem.Infrastructure.Authentication.Authorization
                 options.AddPolicy(
                     Policies.ShipmentUpdate,
                     policy => policy.RequireRole(
+                        Roles.Customer,
                         Roles.Dispatcher,
                         Roles.Admin));
 
