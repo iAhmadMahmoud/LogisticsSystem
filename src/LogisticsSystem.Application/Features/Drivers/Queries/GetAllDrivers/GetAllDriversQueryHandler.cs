@@ -1,4 +1,4 @@
-﻿using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Common.Models;
 using LogisticsSystem.Application.Features.Drivers.Specifications;
 using LogisticsSystem.Domain.Entities;
@@ -26,12 +26,12 @@ namespace LogisticsSystem.Application.Features.Drivers.Queries.GetAllDrivers
             var items = drivers.Select(driver => new DriverListItemResponse
             {
                 Id = driver.Id,
-                UseriD = driver.UserId,
+                UserId = driver.UserId,
                 LicenseNumber = driver.LicenseNumber,
                 Status = driver.Status,
                 Latitude = driver.Latitude,
-                Longtude = driver.Longitude,
-                VechicleId = driver.VehicleId
+                Longitude = driver.Longitude,
+                VehicleId = driver.VehicleId
             }).ToList();
 
             return new PagedResult<DriverListItemResponse>

@@ -1,4 +1,4 @@
-﻿using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Features.Drivers.Specifications;
 using LogisticsSystem.Domain.Entities;
 using MediatR;
@@ -23,7 +23,7 @@ namespace LogisticsSystem.Application.Features.Drivers.Queries.GetAvailableDrive
                 Id = d.Id,
                 UserId = d.UserId,
                 LicenseNumber = d.LicenseNumber,
-                latitude = d.Latitude,
+                Latitude = d.Latitude,
                 Longitude = d.Longitude
             }).ToList();
         }
