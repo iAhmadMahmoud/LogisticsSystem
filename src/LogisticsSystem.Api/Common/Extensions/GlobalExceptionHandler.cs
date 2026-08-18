@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+using FluentValidation;
+using LogisticsSystem.Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -81,6 +82,22 @@ namespace LogisticsSystem.Api.Common.Extensions
 
                     httpContext.Response.StatusCode =
                         StatusCodes.Status403Forbidden;
+
+                    break;
+
+                case DomainException:
+
+                    problemDetails.Title =
+                        "Domain Rule Violated";
+
+                    problemDetails.Status =
+                        StatusCodes.Status422UnprocessableEntity;
+
+                    problemDetails.Detail =
+                        exception.Message;
+
+                    httpContext.Response.StatusCode =
+                        StatusCodes.Status422UnprocessableEntity;
 
                     break;
 

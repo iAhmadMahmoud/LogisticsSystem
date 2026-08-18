@@ -4,6 +4,7 @@ using LogisticsSystem.Application.Features.Dispatch.Specifications;
 using LogisticsSystem.Application.Features.Shipments.Helpers;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
+using LogisticsSystem.Domain.Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -52,20 +53,20 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver
             // 3. Verify the shipment is in a state that can receive a dispatch offer
             if (!ShipmentStatusTransitionValidator.CanTransition(shipment.Status, ShipmentStatus.Assigned))
             {
-                throw new InvalidOperationException(
+                throw new DomainException(
                     $"A dispatch offer cannot be sent for a shipment with status '{shipment.Status}'.");
             }
 
             // 4. Verify the shipment does not already have an accepted driver
             if (shipment.DriverId is not null)
             {
-                throw new InvalidOperationException("Shipment already has an accepted driver assignment.");
+                throw new DomainException("Shipment already has an accepted driver assignment.");
             }
 
             // 5. Verify the driver is available
             if (driver.Status != DriverStatus.Available)
             {
-                throw new InvalidOperationException("Driver is not available.");
+                throw new DomainException("Driver is not available.");
             }
 
             // 6. Prevent duplicate active (Pending) offers for the same shipment
@@ -75,7 +76,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.AssignDriver
 
             if (hasPendingAssignment)
             {
-                throw new InvalidOperationException(
+                throw new DomainException(
                     "A pending dispatch offer already exists for this shipment. Wait for the driver to respond before sending another offer.");
             }
 

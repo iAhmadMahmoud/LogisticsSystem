@@ -1,9 +1,10 @@
-﻿using LogisticsSystem.Application.Common.Interfaces.Authentication;
+using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Application.Features.Shipments.Helpers;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
+using LogisticsSystem.Domain.Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -37,7 +38,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.DeliverShipmen
                 throw new KeyNotFoundException("Shipment not found.");
 
             if (shipment.DriverId is null)
-                throw new InvalidOperationException("Shipment has no assigned driver.");
+                throw new DomainException("Shipment has no assigned driver.");
 
             var customer = await _customerRepository.GetByIdAsync(shipment.CustomerId, cancellationToken);
 
@@ -60,7 +61,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.DeliverShipmen
 
             if (!ShipmentStatusTransitionValidator.CanTransition(shipment.Status, ShipmentStatus.Delivered))
             {
-                throw new InvalidOperationException($"Shipment cannot transition from {shipment.Status} to Delivered.");
+                throw new DomainException($"Shipment cannot transition from {shipment.Status} to Delivered.");
             }
             shipment.Status = ShipmentStatus.Delivered;
             shipment.DeliveredAt = DateTime.UtcNow;

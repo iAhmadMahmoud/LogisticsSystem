@@ -5,6 +5,7 @@ using LogisticsSystem.Application.Features.Shipments.Specifications;
 using LogisticsSystem.Domain.Constants;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
+using LogisticsSystem.Domain.Exceptions;
 using MediatR;
 
 namespace LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment
@@ -62,7 +63,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment
             }
 
             if (shipment.Status != ShipmentStatus.Pending)
-                throw new InvalidOperationException("Only pending shipments can be updated.");
+                throw new DomainException("Only pending shipments can be updated.");
 
             // Update editable properties
             shipment.PickupAddress = dto.PickupAddress;

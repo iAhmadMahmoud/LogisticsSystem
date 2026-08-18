@@ -1,8 +1,9 @@
-﻿using LogisticsSystem.Application.Common.Interfaces.Authentication;
+using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
+using LogisticsSystem.Domain.Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -54,7 +55,7 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.RejectDispatchA
             // 2. Make sure assignment is still pending
             if (assignment.Status != AssignmentStatus.Pending)
             {
-                throw new InvalidOperationException(
+                throw new DomainException(
                     $"Dispatch assignment cannot be rejected because its status is {assignment.Status}.");
             }
 
