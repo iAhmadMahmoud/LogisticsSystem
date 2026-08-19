@@ -192,6 +192,7 @@ namespace LogisticsSystem.Infrastructure
             services.AddScoped<ShipmentAssignmentJob>();
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<INotificationRealtimeService, NotificationRealtimeService>();
+            services.AddScoped<ITrackingRealtimeService, TrackingRealtimeService>();
             services.AddSingleton<IUserIdProvider, UserIdProvider>();
 
             services.AddScoped<AuditSaveChangesInterceptor>();
