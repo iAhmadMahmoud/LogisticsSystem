@@ -12,6 +12,7 @@ namespace LogisticsSystem.Infrastructure.Services
         private readonly IGenericRepository<Driver> _driverRepository;
         private readonly IGenericRepository<DispatchAssignment> _assignmentRepository;
 
+
         public DriverAssignmentService(
             IGenericRepository<Driver> driverRepository,
             IGenericRepository<DispatchAssignment> assignmentRepository)

@@ -1,9 +1,11 @@
-﻿using LogisticsSystem.Application.Common.Interfaces.Authentication;
+using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Features.Customers.Specifications;
 using LogisticsSystem.Application.Features.Shipments.Specifications;
+using LogisticsSystem.Domain.Constants;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
+using LogisticsSystem.Domain.Exceptions;
 using MediatR;
 
 namespace LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment
@@ -11,37 +13,57 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment
     public class UpdateShipmentCommandHandler : IRequestHandler<UpdateShipmentCommand>
     {
         private readonly IGenericRepository<Shipment> _shipmentRepository;
+        private readonly IGenericRepository<Customer> _customerRepository;
+        private readonly ICurrentUserService _currentUserService;
         private readonly IUnitOfWork _unitOfWork;
 
-
-
-        public UpdateShipmentCommandHandler
-            (
-                IGenericRepository<Shipment> shipmentRepository,
-                IUnitOfWork unitOfWork
-
-            )
+        public UpdateShipmentCommandHandler(
+            IGenericRepository<Shipment> shipmentRepository,
+            IUnitOfWork unitOfWork,
+            IGenericRepository<Customer> customerRepository,
+            ICurrentUserService currentUserService)
         {
             _shipmentRepository = shipmentRepository;
             _unitOfWork = unitOfWork;
-
+            _customerRepository = customerRepository;
+            _currentUserService = currentUserService;
         }
 
         public async Task Handle(UpdateShipmentCommand request, CancellationToken cancellationToken)
         {
             var dto = request.Shipment;
 
-            
+            Shipment? shipment;
 
-            var shipment = await _shipmentRepository.GetByIdAsync(dto.Id,cancellationToken);
+            // Dispatchers and Admins can update any shipment regardless of ownership.
+            // Customers are restricted to their own shipments only.
+            if (_currentUserService.IsInRole(Roles.Dispatcher) || _currentUserService.IsInRole(Roles.Admin))
+            {
+                shipment = await _shipmentRepository.GetByIdAsync(dto.Id);
 
-            if (shipment is null)
-                throw new KeyNotFoundException("Shipment not found.");
+                if (shipment is null)
+                    throw new KeyNotFoundException("Shipment not found.");
+            }
+            else
+            {
+                // Customer path — must own the shipment
+                var customer = await _customerRepository.FirstOrDefaultAsync(
+                    new CustomerByUserIdSpecification(_currentUserService.UserId),
+                    cancellationToken);
+
+                if (customer is null)
+                    throw new UnauthorizedAccessException("Customer profile not found.");
+
+                shipment = await _shipmentRepository.FirstOrDefaultAsync(
+                    new ShipmentByIdAndCustomerSpecification(dto.Id, customer.Id),
+                    cancellationToken);
+
+                if (shipment is null)
+                    throw new KeyNotFoundException("Shipment not found.");
+            }
 
             if (shipment.Status != ShipmentStatus.Pending)
-            {
-                throw new InvalidOperationException("Only pending shipments can be updated."); 
-            }
+                throw new DomainException("Only pending shipments can be updated.");
 
             // Update editable properties
             shipment.PickupAddress = dto.PickupAddress;

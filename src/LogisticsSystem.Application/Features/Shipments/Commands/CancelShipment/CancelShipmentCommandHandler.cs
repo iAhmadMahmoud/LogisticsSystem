@@ -1,4 +1,4 @@
-﻿using LogisticsSystem.Application.Common.Interfaces.Authentication;
+using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Application.Features.Customers.Specifications;
@@ -6,6 +6,7 @@ using LogisticsSystem.Application.Features.Shipments.Helpers;
 using LogisticsSystem.Domain.Constants;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
+using LogisticsSystem.Domain.Exceptions;
 using MediatR;
 
 namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
@@ -76,7 +77,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
 
             if (!ShipmentStatusTransitionValidator.CanTransition(shipment.Status, ShipmentStatus.Cancelled))
             {
-                throw new InvalidOperationException($"Shipment cannot transtion from {shipment.Status} to Cancelled.");
+                throw new DomainException($"Shipment cannot transition from {shipment.Status} to Cancelled.");
             }
 
             var wasAssigned = shipment.Status == ShipmentStatus.Assigned;
@@ -90,7 +91,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
             {
                 if (shipment.DriverId is null)
                 {
-                    throw new InvalidOperationException("Assigned shipment has no driver.");
+                    throw new DomainException("Assigned shipment has no driver.");
                 }
 
                 driver = await _driverRepository.GetByIdAsync(shipment.DriverId.Value, cancellationToken);

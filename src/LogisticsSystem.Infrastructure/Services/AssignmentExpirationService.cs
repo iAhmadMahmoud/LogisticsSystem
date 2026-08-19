@@ -1,4 +1,5 @@
-﻿using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using System.Diagnostics;
+using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Application.Features.Dispatch.Specifications;
 using LogisticsSystem.Domain.Entities;
@@ -6,7 +7,6 @@ using LogisticsSystem.Domain.Enums;
 using LogisticsSystem.Infrastructure.BackgroundJobs;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Diagnostics.Contracts;
 
 namespace LogisticsSystem.Infrastructure.Services
 {
@@ -16,38 +16,57 @@ namespace LogisticsSystem.Infrastructure.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly DispatchOptions _options;
         private readonly ILogger<AssignmentExpirationService> _logger;
-        private readonly INearestDriverService _nearestDriverService;
         private readonly IDispatchAssignmentService _dispatchAssignmentService;
-        private readonly IGenericRepository<Driver> _driverRepository;
         private readonly INotificationService _notificationService;
+        private readonly IDriverAssignmentService _driverAssignmentService;
 
-        public AssignmentExpirationService(IGenericRepository<DispatchAssignment> assignmentRepository, IUnitOfWork unitOfWork, IOptions<DispatchOptions> options, ILogger<AssignmentExpirationService> logger, INearestDriverService nearestDriverService, IDispatchAssignmentService dispatchAssignmentService, IGenericRepository<Driver> driverRepository, INotificationService notificationService)
+        public AssignmentExpirationService(
+            IGenericRepository<DispatchAssignment> assignmentRepository,
+            IUnitOfWork unitOfWork,
+            IOptions<DispatchOptions> options,
+            ILogger<AssignmentExpirationService> logger,
+            IDispatchAssignmentService dispatchAssignmentService,
+            INotificationService notificationService,
+            IDriverAssignmentService driverAssignmentService)
         {
             _assignmentRepository = assignmentRepository;
             _unitOfWork = unitOfWork;
             _options = options.Value;
             _logger = logger;
-            _nearestDriverService = nearestDriverService;
             _dispatchAssignmentService = dispatchAssignmentService;
-            _driverRepository = driverRepository;
             _notificationService = notificationService;
+            _driverAssignmentService = driverAssignmentService;
         }
 
         public async Task ExpireAssignmentsAsync(CancellationToken cancellationToken = default)
         {
+            var stopwatch = Stopwatch.StartNew();
             var expirationTime = DateTime.UtcNow.AddMinutes(-_options.AssignmentExpirationMinutes);
+
+            _logger.LogInformation(
+                "Checking for expired dispatch assignments. Cutoff: {CutoffTime:yyyy-MM-dd HH:mm:ss UTC} (Threshold: {Minutes} min).",
+                expirationTime,
+                _options.AssignmentExpirationMinutes);
 
             var specification = new ExpiredAssignmentsSpecification(expirationTime);
 
             var assignments = await _assignmentRepository.ListAsync(specification, cancellationToken);
 
             if (assignments.Count == 0)
+            {
+                _logger.LogInformation(
+                    "No expired dispatch assignments found. Check completed in {ElapsedMilliseconds} ms.",
+                    stopwatch.ElapsedMilliseconds);
                 return;
+            }
 
+            _logger.LogInformation(
+                "Found {Count} expired dispatch assignment(s) to process.",
+                assignments.Count);
 
             var realtimeNotifications = new List<(Guid UserId, string Title, string Message)>();
-
             var now = DateTime.UtcNow;
+            var reassignedCount = 0;
 
             foreach (var assignment in assignments)
             {
@@ -58,28 +77,29 @@ namespace LogisticsSystem.Infrastructure.Services
 
                 var shipment = assignment.Shipment;
 
-                var nearestDriver = await _nearestDriverService.FindNerstAsync(shipment, cancellationToken);
+                _logger.LogInformation(
+                    "Assignment {AssignmentId} for shipment {TrackingNumber} (Driver: {DriverId}, Attempt #{AttemptNumber}) marked as Expired.",
+                    assignment.Id,
+                    shipment.TrackingNumber,
+                    assignment.DriverId,
+                    assignment.AttemptNumber);
 
-                if (nearestDriver is null)
+                var driver = await _driverAssignmentService.FindBestAvailableDriverAsync(
+                    shipment,
+                    cancellationToken);
+
+                if (driver is null)
                 {
                     _logger.LogWarning(
-                        "No available driver found for shipment {ShipmentId} after assignment {AssignmentId} expired.",
-                        shipment.Id,
+                        "No alternative driver found for shipment {TrackingNumber} after assignment {AssignmentId} expired.",
+                        shipment.TrackingNumber,
                         assignment.Id);
 
                     continue;
                 }
 
-                var driver = await _driverRepository.GetByIdAsync(nearestDriver.DriverId, cancellationToken);
-
-                if (driver is null)
-                {
-                    _logger.LogWarning("Nearest driver {DriverId} could not be found for shipment {ShipmentId}.", nearestDriver.DriverId, shipment.Id);
-
-                    continue;
-                }
-
                 await _dispatchAssignmentService.CreateAssignmentAsync(shipment, driver, cancellationToken);
+                reassignedCount++;
 
                 realtimeNotifications.Add((driver.UserId,
                     "New Shipment Assignment",
@@ -87,10 +107,9 @@ namespace LogisticsSystem.Infrastructure.Services
                 ));
 
                 _logger.LogInformation(
-                    "Shipment {ShipmentId} reassigned to driver {DriverId} after assignment {AssignmentId} expired.",
-                    shipment.Id,
-                    driver.Id,
-                    assignment.Id);
+                    "Shipment {TrackingNumber} successfully reassigned to driver {DriverId}.",
+                    shipment.TrackingNumber,
+                    driver.Id);
             }
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -104,7 +123,13 @@ namespace LogisticsSystem.Infrastructure.Services
                     cancellationToken);
             }
 
-            _logger.LogInformation("Expired {Count} dispatch assignments.", assignments.Count);
+            stopwatch.Stop();
+
+            _logger.LogInformation(
+                "Finished processing expired assignments: {ExpiredCount} expired, {ReassignedCount} reassigned in {ElapsedMilliseconds} ms.",
+                assignments.Count,
+                reassignedCount,
+                stopwatch.ElapsedMilliseconds);
         }
     }
 }

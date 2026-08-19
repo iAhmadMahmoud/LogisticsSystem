@@ -16,19 +16,22 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CreateShipment
         private readonly ICurrentUserService _currentUserService;
         private readonly IGenericRepository<Customer> _customerRepository;
         private readonly IShipmentAssignmentScheduler _shipmentAssignmentScheduler;
+        private readonly IShipmentStatusHistoryService _shipmentStatusHistoryService;
 
         public CreateShipmentCommandHandler(
             IGenericRepository<Shipment> shipmentRepository,
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUserService,
             IGenericRepository<Customer> customerRepository,
-            IShipmentAssignmentScheduler shipmentAssignmentScheduler)
+            IShipmentAssignmentScheduler shipmentAssignmentScheduler,
+            IShipmentStatusHistoryService shipmentStatusHistoryService)
         {
             _shipmentRepository = shipmentRepository;
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
             _customerRepository = customerRepository;
             _shipmentAssignmentScheduler = shipmentAssignmentScheduler;
+            _shipmentStatusHistoryService = shipmentStatusHistoryService;
         }
 
         public async Task<Guid> Handle(
@@ -86,6 +89,12 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CreateShipment
             // 4. Save shipment
             await _shipmentRepository.AddAsync(
                 shipment,
+                cancellationToken);
+
+            await _shipmentStatusHistoryService.AddAsync(
+                shipment,
+                ShipmentStatus.Pending,
+                _currentUserService.UserId,
                 cancellationToken);
 
             await _unitOfWork.SaveChangesAsync(

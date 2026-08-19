@@ -1,17 +1,12 @@
-﻿namespace LogisticsSystem.Domain.Enums
+namespace LogisticsSystem.Domain.Enums
 {
     public enum NotificationType
     {
-        ShipmentAssigned,
-        ShipmentDelivered,
-        ShipmentCancelled,
-        DriverArrived,
-        DispatchAssignmentReceived,
-        AssignmentAccepted,
-        AssignmentRejected,
-        AssignmentExpired,
-        NoDriverAvailable,
-        ShipmentPickedUp
-
+        ShipmentAssigned = 1,
+        ShipmentPickedUp = 2,
+        ShipmentDelivered = 3,
+        ShipmentCancelled = 4,
+        DispatchAssignmentReceived = 5,
+        NoDriverAvailable = 6
     }
 }

@@ -4,6 +4,7 @@ using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Application.Features.Shipments.Helpers;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
+using LogisticsSystem.Domain.Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -60,7 +61,7 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.AcceptDispatchA
             // 2. Only pending assignments can be accepted
             if (assignment.Status != AssignmentStatus.Pending)
             {
-                throw new InvalidOperationException(
+                throw new DomainException(
                     $"Dispatch assignment cannot be accepted because its status is '{assignment.Status}'.");
             }
 
@@ -101,21 +102,21 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.AcceptDispatchA
                     shipment.Status,
                     ShipmentStatus.Assigned))
             {
-                throw new InvalidOperationException(
+                throw new DomainException(
                     $"Shipment cannot transition from '{shipment.Status}' to 'Assigned'.");
             }
 
             // 7. Make sure another driver hasn't already accepted it
             if (shipment.DriverId is not null)
             {
-                throw new InvalidOperationException(
+                throw new DomainException(
                     "Shipment already has an accepted driver assignment.");
             }
 
             // 8. Verify driver availability
             if (driver.Status != DriverStatus.Available)
             {
-                throw new InvalidOperationException(
+                throw new DomainException(
                     "Driver is no longer available.");
             }
 
