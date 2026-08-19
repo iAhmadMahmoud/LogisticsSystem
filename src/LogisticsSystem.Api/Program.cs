@@ -98,7 +98,9 @@ public class Program
         app.MapControllers();
 
         app.MapHub<NotificationHub>("/hubs/notifications");
+        app.MapHub<TrackingHub>("/hubs/tracking");
 
         app.Run();
     }
 }
+
