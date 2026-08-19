@@ -6,6 +6,7 @@ namespace LogisticsSystem.Application.Common.Interfaces.Services
     {
         Task LocationUpdatedAsync(
             Guid shipmentId,
+            Guid driverId,
             double latitude,
             double longitude,
             DateTime recordedAt,

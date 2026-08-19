@@ -98,6 +98,7 @@ namespace LogisticsSystem.Application.Features.ShipmentTrackings.Commands.AddShi
 
             await _trackingRealtimeService.LocationUpdatedAsync(
                 shipment.Id,
+                driver.Id,
                 request.Latitude,
                 request.Longitude,
                 tracking.RecordedAt,

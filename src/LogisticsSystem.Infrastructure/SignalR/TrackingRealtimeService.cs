@@ -18,19 +18,21 @@ namespace LogisticsSystem.Infrastructure.SignalR
 
         public async Task LocationUpdatedAsync(
             Guid shipmentId,
+            Guid driverId,
             double latitude,
             double longitude,
             DateTime recordedAt,
             CancellationToken cancellationToken = default)
         {
             var groupName = $"Shipment:{shipmentId}";
-            _logger.LogInformation("Broadcasting LocationUpdated to group {GroupName} (Lat: {Latitude}, Lng: {Longitude})", groupName, latitude, longitude);
+            _logger.LogInformation("Broadcasting LocationUpdated to group {GroupName} (Driver: {DriverId}, Lat: {Latitude}, Lng: {Longitude})", groupName, driverId, latitude, longitude);
 
             await _hubContext.Clients
                 .Group(groupName)
                 .SendAsync("LocationUpdated", new
                 {
                     shipmentId,
+                    driverId,
                     latitude,
                     longitude,
                     recordedAt
