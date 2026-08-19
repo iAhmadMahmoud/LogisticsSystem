@@ -132,7 +132,7 @@ namespace LogisticsSystem.Infrastructure
                             var path = context.HttpContext.Request.Path;
 
                             if (!string.IsNullOrEmpty(accessToken) &&
-                                path.StartsWithSegments("/hubs/notifications"))
+                                path.StartsWithSegments("/hubs"))
                             {
                                 context.Token = accessToken;
                             }
