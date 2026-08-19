@@ -18,9 +18,18 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.PickupShipment
         private readonly ICurrentUserService _currentUserService;
         private readonly INotificationService _notificationService;
         private readonly IGenericRepository<Customer> _customerRepository;
+        private readonly ITrackingRealtimeService _trackingRealtimeService;
         private readonly IUnitOfWork _unitOfWork;
 
-        public PickupShipmentCommandHandler(IGenericRepository<Shipment> shipmentRepository, IUnitOfWork unitOfWork, IShipmentStatusHistoryService statusHistoryService, ICurrentUserService currentUserService, IGenericRepository<Driver> driverRepository, INotificationService notificationService, IGenericRepository<Customer> customerRepository)
+        public PickupShipmentCommandHandler(
+            IGenericRepository<Shipment> shipmentRepository,
+            IUnitOfWork unitOfWork,
+            IShipmentStatusHistoryService statusHistoryService,
+            ICurrentUserService currentUserService,
+            IGenericRepository<Driver> driverRepository,
+            INotificationService notificationService,
+            IGenericRepository<Customer> customerRepository,
+            ITrackingRealtimeService trackingRealtimeService)
         {
             _shipmentRepository = shipmentRepository;
             _unitOfWork = unitOfWork;
@@ -29,11 +38,12 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.PickupShipment
             _driverRepository = driverRepository;
             _notificationService = notificationService;
             _customerRepository = customerRepository;
+            _trackingRealtimeService = trackingRealtimeService;
         }
 
         public async Task Handle(PickupShipmentCommand request, CancellationToken cancellationToken)
         {
-            var shipment = await _shipmentRepository.GetByIdAsync(request.ShipmentId);
+            var shipment = await _shipmentRepository.GetByIdAsync(request.ShipmentId, cancellationToken);
 
             if (shipment is null)
             {
@@ -65,7 +75,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.PickupShipment
                 throw new UnauthorizedAccessException("You are not assigned to this shipment.");
             }
 
-            if (!ShipmentStatusTransitionValidator.CanTransition(shipment.Status,ShipmentStatus.PickedUp))
+            if (!ShipmentStatusTransitionValidator.CanTransition(shipment.Status, ShipmentStatus.PickedUp))
             {
                 throw new DomainException($"Shipment cannot transition from {shipment.Status} to PickedUp.");
             }
@@ -87,6 +97,13 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.PickupShipment
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             await _notificationService.SendRealtimeAsync(customer.UserId, "Shipment Picked Up", $"Shipment {shipment.TrackingNumber} has been picked up by the driver.", cancellationToken);
+
+            await _trackingRealtimeService.ShipmentStatusChangedAsync(
+                shipment.Id,
+                ShipmentStatus.PickedUp,
+                DateTime.UtcNow,
+                null,
+                cancellationToken);
         }
     }
 }

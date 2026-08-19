@@ -18,8 +18,18 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.DeliverShipmen
         private readonly ICurrentUserService _currentUserService;
         private readonly IGenericRepository<Customer> _customerRepository;
         private readonly INotificationService _notificationService;
+        private readonly ITrackingRealtimeService _trackingRealtimeService;
         private readonly IUnitOfWork _unitOfWork;
-        public DeliverShipmentCommandHandler(IGenericRepository<Shipment> shipmentRepository, IUnitOfWork unitOfWork, IGenericRepository<Driver> driverRepository, IShipmentStatusHistoryService statusHistoryService, ICurrentUserService currentUserService, IGenericRepository<Customer> customerRepository, INotificationService notificationService)
+
+        public DeliverShipmentCommandHandler(
+            IGenericRepository<Shipment> shipmentRepository,
+            IUnitOfWork unitOfWork,
+            IGenericRepository<Driver> driverRepository,
+            IShipmentStatusHistoryService statusHistoryService,
+            ICurrentUserService currentUserService,
+            IGenericRepository<Customer> customerRepository,
+            INotificationService notificationService,
+            ITrackingRealtimeService trackingRealtimeService)
         {
             _shipmentRepository = shipmentRepository;
             _unitOfWork = unitOfWork;
@@ -28,11 +38,12 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.DeliverShipmen
             _currentUserService = currentUserService;
             _customerRepository = customerRepository;
             _notificationService = notificationService;
+            _trackingRealtimeService = trackingRealtimeService;
         }
 
         public async Task Handle(DeliverShipmentCommand request, CancellationToken cancellationToken)
         {
-            var shipment = await _shipmentRepository.GetByIdAsync(request.ShipmentId);
+            var shipment = await _shipmentRepository.GetByIdAsync(request.ShipmentId, cancellationToken);
 
             if (shipment is null)
                 throw new KeyNotFoundException("Shipment not found.");
@@ -86,6 +97,13 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.DeliverShipmen
                 customer.UserId,
                 "Shipment Delivered",
                 $"Shipment {shipment.TrackingNumber} has been delivered successfully.",
+                cancellationToken);
+
+            await _trackingRealtimeService.ShipmentStatusChangedAsync(
+                shipment.Id,
+                ShipmentStatus.Delivered,
+                DateTime.UtcNow,
+                null,
                 cancellationToken);
         }
     }

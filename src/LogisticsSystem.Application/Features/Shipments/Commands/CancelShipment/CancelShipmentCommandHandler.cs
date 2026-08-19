@@ -20,6 +20,7 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
         private readonly ICurrentUserService _currentUserService;
         private readonly IGenericRepository<Customer> _customerRepository;
         private readonly INotificationService _notificationService;
+        private readonly ITrackingRealtimeService _trackingRealtimeService;
         private readonly IUnitOfWork _unitOfWork;
 
         public CancelShipmentCommandHandler(
@@ -29,7 +30,8 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
             IGenericRepository<Driver> driverRepository,
             IUnitOfWork unitOfWork,
             IGenericRepository<Customer> customerRepository,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            ITrackingRealtimeService trackingRealtimeService)
         {
             _shipmentsRepository = shipmentsRepository;
             _currentUserService = currentUserService;
@@ -38,11 +40,12 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
             _unitOfWork = unitOfWork;
             _customerRepository = customerRepository;
             _notificationService = notificationService;
+            _trackingRealtimeService = trackingRealtimeService;
         }
 
         public async Task Handle(CancelShipmentCommand request, CancellationToken cancellationToken)
         {
-            var shipment = await _shipmentsRepository.GetByIdAsync(request.ShipmentId);
+            var shipment = await _shipmentsRepository.GetByIdAsync(request.ShipmentId, cancellationToken);
 
             if (shipment is null)
             {
@@ -140,6 +143,13 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.CancelShipment
                     $"Shipment {shipment.TrackingNumber} has been cancelled by the customer.",
                     cancellationToken);
             }
+
+            await _trackingRealtimeService.ShipmentStatusChangedAsync(
+                shipment.Id,
+                ShipmentStatus.Cancelled,
+                DateTime.UtcNow,
+                null,
+                cancellationToken);
         }
     }
 }

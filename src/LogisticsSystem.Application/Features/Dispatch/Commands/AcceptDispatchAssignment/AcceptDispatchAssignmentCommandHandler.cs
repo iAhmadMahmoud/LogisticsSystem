@@ -20,6 +20,7 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.AcceptDispatchA
         private readonly IShipmentStatusHistoryService _shipmentStatusHistoryService;
         private readonly ICurrentUserService _currentUserService;
         private readonly INotificationService _notificationService;
+        private readonly ITrackingRealtimeService _trackingRealtimeService;
         private readonly IUnitOfWork _unitOfWork;
 
         public AcceptDispatchAssignmentCommandHandler(
@@ -30,6 +31,7 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.AcceptDispatchA
             IShipmentStatusHistoryService shipmentStatusHistoryService,
             ICurrentUserService currentUserService,
             INotificationService notificationService,
+            ITrackingRealtimeService trackingRealtimeService,
             IUnitOfWork unitOfWork)
         {
             _dispatchAssignmentRepository = dispatchAssignmentRepository;
@@ -39,6 +41,7 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.AcceptDispatchA
             _shipmentStatusHistoryService = shipmentStatusHistoryService;
             _currentUserService = currentUserService;
             _notificationService = notificationService;
+            _trackingRealtimeService = trackingRealtimeService;
             _unitOfWork = unitOfWork;
         }
 
@@ -172,6 +175,14 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.AcceptDispatchA
                 customer.UserId,
                 "Shipment Assigned",
                 $"Shipment {shipment.TrackingNumber} has been assigned to a driver.",
+                cancellationToken);
+
+            // 17. Broadcast status change to shipment tracking group
+            await _trackingRealtimeService.ShipmentStatusChangedAsync(
+                shipment.Id,
+                ShipmentStatus.Assigned,
+                DateTime.UtcNow,
+                null,
                 cancellationToken);
         }
     }
