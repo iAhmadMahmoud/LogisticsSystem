@@ -22,11 +22,15 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.10" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\LogisticsSystem.Domain\LogisticsSystem.Domain.csproj" />
+    <ProjectReference Include="..\..\src\LogisticsSystem.Application\LogisticsSystem.Application.csproj" />
     <ProjectReference Include="..\..\src\LogisticsSystem.Infrastructure\LogisticsSystem.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\LogisticsSystem.Api\LogisticsSystem.Api.csproj" />
   </ItemGroup>
 
   <ItemGroup>
