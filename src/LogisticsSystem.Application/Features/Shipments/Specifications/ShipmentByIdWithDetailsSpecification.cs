@@ -3,9 +3,9 @@ using LogisticsSystem.Domain.Entities;
 
 namespace LogisticsSystem.Application.Features.Shipments.Specifications
 {
-    public sealed class ShipmentByIdAndCustomerSpecification : BaseSpecification<Shipment>
+    public sealed class ShipmentByIdWithDetailsSpecification : BaseSpecification<Shipment>
     {
-        public ShipmentByIdAndCustomerSpecification(Guid shipmentId, Guid customerId) : base(s => s.Id == shipmentId && s.CustomerId == customerId)
+        public ShipmentByIdWithDetailsSpecification(Guid shipmentId) : base(s => s.Id == shipmentId)
         {
             AddInclude(s => s.Driver!);
             AddInclude(s => s.ShipmentTrackings);

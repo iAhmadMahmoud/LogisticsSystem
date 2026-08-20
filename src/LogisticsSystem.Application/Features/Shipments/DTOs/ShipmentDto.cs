@@ -1,4 +1,4 @@
-﻿using LogisticsSystem.Domain.Enums;
+using LogisticsSystem.Domain.Enums;
 
 namespace LogisticsSystem.Application.Features.Shipments.DTOs
 {
@@ -14,11 +14,16 @@ namespace LogisticsSystem.Application.Features.Shipments.DTOs
         public ShipmentStatus Status { get; init; }
         public Guid? DriverId { get; set; }
 
+        public string? DriverName { get; set; }
+        public string? DriverPhone { get; set; }
+        public string? DriverLicense { get; set; }
+        public LogisticsSystem.Application.Features.ShipmentTrackings.DTOs.ShipmentTrackingDto? LatestLocation { get; set; }
+
         public DateTime? AssignedAt { get; set; }
         public DateTime ScheduledAt { get; init; }
         public DateTime? PickedUpAt { get; set; }
         public DateTime? DeliveredAt { get; set; }
+        public DateTime? FailedAt { get; set; }
         public DateTime? CancelledAt { get; set; }
-
     }
 }
