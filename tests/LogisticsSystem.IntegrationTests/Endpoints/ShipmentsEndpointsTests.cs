@@ -8,10 +8,12 @@ namespace LogisticsSystem.IntegrationTests.Endpoints
 {
     public class ShipmentsEndpointsTests : IClassFixture<CustomWebApplicationFactory>
     {
+        private readonly CustomWebApplicationFactory _factory;
         private readonly HttpClient _client;
 
         public ShipmentsEndpointsTests(CustomWebApplicationFactory factory)
         {
+            _factory = factory;
             _client = factory.CreateClient();
         }
 
@@ -59,6 +61,29 @@ namespace LogisticsSystem.IntegrationTests.Endpoints
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        }
+
+        [Fact]
+        public async Task GetMyShipments_WithValidToken_ReturnsOnlyCustomerShipments()
+        {
+            // Arrange
+            var (user1, customer1) = await TestAuthHelper.SeedCustomerAsync(_factory.Services, email: $"customer1_{Guid.NewGuid()}@test.com");
+            var (_, customer2) = await TestAuthHelper.SeedCustomerAsync(_factory.Services, email: $"customer2_{Guid.NewGuid()}@test.com");
+
+            var myShipment = await TestAuthHelper.SeedShipmentAsync(_factory.Services, customer1.Id, trackingNumber: "TRK-MY-MINE-01");
+            var otherShipment = await TestAuthHelper.SeedShipmentAsync(_factory.Services, customer2.Id, trackingNumber: "TRK-OTHER-01");
+
+            var token = await TestAuthHelper.GenerateJwtTokenAsync(_factory.Services, user1.Id);
+            var client = TestAuthHelper.CreateAuthenticatedClient(_factory, token);
+
+            // Act
+            var response = await client.GetAsync("/api/Shipments/my-shipments");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var content = await response.Content.ReadAsStringAsync();
+            content.Should().Contain("TRK-MY-MINE-01");
+            content.Should().NotContain("TRK-OTHER-01");
         }
     }
 }
