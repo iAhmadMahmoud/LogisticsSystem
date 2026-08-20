@@ -21,6 +21,7 @@ namespace LogisticsSystem.UnitTests.Dispatch
         private readonly Mock<IShipmentStatusHistoryService> _statusHistoryServiceMock = new();
         private readonly Mock<ICurrentUserService> _currentUserServiceMock = new();
         private readonly Mock<INotificationService> _notificationServiceMock = new();
+        private readonly Mock<ITrackingRealtimeService> _trackingRealtimeServiceMock = new();
         private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
 
         private readonly AcceptDispatchAssignmentCommandHandler _handler;
@@ -35,6 +36,7 @@ namespace LogisticsSystem.UnitTests.Dispatch
                 _statusHistoryServiceMock.Object,
                 _currentUserServiceMock.Object,
                 _notificationServiceMock.Object,
+                _trackingRealtimeServiceMock.Object,
                 _unitOfWorkMock.Object);
         }
 

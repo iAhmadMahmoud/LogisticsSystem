@@ -7,6 +7,8 @@ namespace LogisticsSystem.Domain.Enums
         ShipmentDelivered = 3,
         ShipmentCancelled = 4,
         DispatchAssignmentReceived = 5,
-        NoDriverAvailable = 6
+        NoDriverAvailable = 6,
+        ShipmentInTransit = 7,
+        ShipmentFailed = 8
     }
 }

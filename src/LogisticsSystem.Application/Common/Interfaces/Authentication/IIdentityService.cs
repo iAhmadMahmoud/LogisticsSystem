@@ -13,5 +13,7 @@ namespace LogisticsSystem.Application.Common.Interfaces.Authentication
         Task ResetPasswordAsync(ResetPasswordRequest request);
         Task ChangePasswordAsync(ChangePasswordRequest request);
         Task<Guid> CreateDriverAsync(CreateDriverIdentityRequest request,CancellationToken cancellationToken = default);
+        Task UpdateProfileAsync(Guid userId, string firstName, string lastName, string? phoneNumber, CancellationToken cancellationToken = default);
+        Task<UserInfoDto?> GetUserByIdAsync(Guid userId, CancellationToken cancellationToken = default);
     }
 }

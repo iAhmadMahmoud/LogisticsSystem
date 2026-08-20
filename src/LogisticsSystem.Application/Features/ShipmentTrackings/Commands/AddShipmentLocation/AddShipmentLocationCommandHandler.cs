@@ -1,11 +1,12 @@
 using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Application.Common.Interfaces.Services;
+using LogisticsSystem.Application.Features.Drivers.Specifications;
 using LogisticsSystem.Application.Features.ShipmentTrackings.Specifications;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
 using LogisticsSystem.Domain.Exceptions;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 
 namespace LogisticsSystem.Application.Features.ShipmentTrackings.Commands.AddShipmentLocation
 {
@@ -15,6 +16,7 @@ namespace LogisticsSystem.Application.Features.ShipmentTrackings.Commands.AddShi
         private readonly IGenericRepository<Driver> _driverRepository;
         private readonly IGenericRepository<ShipmentTracking> _shipmentTrackingRepository;
         private readonly ICurrentUserService _currentUserService;
+        private readonly ITrackingRealtimeService _trackingRealtimeService;
         private readonly IUnitOfWork _unitOfWork;
 
         public AddShipmentLocationCommandHandler
@@ -23,6 +25,7 @@ namespace LogisticsSystem.Application.Features.ShipmentTrackings.Commands.AddShi
                 IGenericRepository<Driver> driverRepository,
                 IGenericRepository<ShipmentTracking> shipmentTrackingRepository,
                 ICurrentUserService currentUserService,
+                ITrackingRealtimeService trackingRealtimeService,
                 IUnitOfWork unitOfWork
             )
         {
@@ -30,18 +33,21 @@ namespace LogisticsSystem.Application.Features.ShipmentTrackings.Commands.AddShi
             _driverRepository = driverRepository;
             _shipmentTrackingRepository = shipmentTrackingRepository;
             _currentUserService = currentUserService;
+            _trackingRealtimeService = trackingRealtimeService;
             _unitOfWork = unitOfWork;
         }
 
         public async Task Handle(AddShipmentLocationCommand request, CancellationToken cancellationToken)
         {
-            var shipment = await _shipmentRepository.GetByIdAsync( request.ShipmentId ,cancellationToken);
+            var shipment = await _shipmentRepository.GetByIdAsync(request.ShipmentId, cancellationToken);
             if (shipment is null)
             {
                 throw new KeyNotFoundException("Shipment not found.");
             }
 
-            var driver = await _driverRepository.AsQueryable().FirstOrDefaultAsync(d => d.UserId == _currentUserService.UserId, cancellationToken);
+            var driver = await _driverRepository.FirstOrDefaultAsync(
+                new DriverByUserIdSpecification(_currentUserService.UserId),
+                cancellationToken);
 
             if (driver is null)
             {
@@ -57,13 +63,16 @@ namespace LogisticsSystem.Application.Features.ShipmentTrackings.Commands.AddShi
                 throw new DomainException("Location tracking is only allowed when the shipment is in transit.");
             }
 
-            var latestTracking = await _shipmentTrackingRepository.FirstOrDefaultAsync(new LatestShipmentTrackingSpecification(shipment.Id), cancellationToken);
+            var latestTracking = await _shipmentTrackingRepository.FirstOrDefaultAsync(
+                new LatestShipmentTrackingSpecification(shipment.Id),
+                cancellationToken);
 
             if (latestTracking is not null)
             {
                 const double coordinateTolerance = 0.000001;
 
-                var isSameLocation = Math.Abs(latestTracking.Latitude - request.Latitude) < coordinateTolerance && Math.Abs(latestTracking.Longitude - request.Longitude) < coordinateTolerance;
+                var isSameLocation = Math.Abs(latestTracking.Latitude - request.Latitude) < coordinateTolerance &&
+                                     Math.Abs(latestTracking.Longitude - request.Longitude) < coordinateTolerance;
 
                 if (isSameLocation)
                 {
@@ -79,9 +88,22 @@ namespace LogisticsSystem.Application.Features.ShipmentTrackings.Commands.AddShi
                 RecordedAt = DateTime.UtcNow
             };
 
-            await _shipmentTrackingRepository.AddAsync(tracking,cancellationToken);
+            await _shipmentTrackingRepository.AddAsync(tracking, cancellationToken);
+
+            driver.Latitude = request.Latitude;
+            driver.Longitude = request.Longitude;
+            _driverRepository.Update(driver);
 
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            await _trackingRealtimeService.LocationUpdatedAsync(
+                shipment.Id,
+                driver.Id,
+                request.Latitude,
+                request.Longitude,
+                tracking.RecordedAt,
+                cancellationToken);
         }
     }
 }
+

@@ -132,7 +132,7 @@ namespace LogisticsSystem.Infrastructure
                             var path = context.HttpContext.Request.Path;
 
                             if (!string.IsNullOrEmpty(accessToken) &&
-                                path.StartsWithSegments("/hubs/notifications"))
+                                path.StartsWithSegments("/hubs"))
                             {
                                 context.Token = accessToken;
                             }
@@ -192,6 +192,7 @@ namespace LogisticsSystem.Infrastructure
             services.AddScoped<ShipmentAssignmentJob>();
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<INotificationRealtimeService, NotificationRealtimeService>();
+            services.AddScoped<ITrackingRealtimeService, TrackingRealtimeService>();
             services.AddSingleton<IUserIdProvider, UserIdProvider>();
 
             services.AddScoped<AuditSaveChangesInterceptor>();

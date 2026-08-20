@@ -71,13 +71,16 @@ public class Program
 
         app.UseSerilogRequestLogging();
 
-        app.UseHangfireDashboard("/hangfire");
-        RecurringJob.AddOrUpdate<IAssignmentExpirationService>("expire-dispatch-assignments", service => service.ExpireAssignmentsAsync(CancellationToken.None), Cron.Minutely);
-
-        using (var scope = app.Services.CreateScope())
+        if (!app.Environment.IsEnvironment("Testing"))
         {
-            var dbInitializer = scope.ServiceProvider.GetRequiredService<LogisticsSystem.Infrastructure.Persistence.Seed.DbInitializer>();
-            await dbInitializer.InitializeAsync();
+            app.UseHangfireDashboard("/hangfire");
+            RecurringJob.AddOrUpdate<IAssignmentExpirationService>("expire-dispatch-assignments", service => service.ExpireAssignmentsAsync(CancellationToken.None), Cron.Minutely);
+
+            using (var scope = app.Services.CreateScope())
+            {
+                var dbInitializer = scope.ServiceProvider.GetRequiredService<LogisticsSystem.Infrastructure.Persistence.Seed.DbInitializer>();
+                await dbInitializer.InitializeAsync();
+            }
         }
 
         if (app.Environment.IsDevelopment())
@@ -98,7 +101,9 @@ public class Program
         app.MapControllers();
 
         app.MapHub<NotificationHub>("/hubs/notifications");
+        app.MapHub<TrackingHub>("/hubs/tracking");
 
         app.Run();
     }
 }
+

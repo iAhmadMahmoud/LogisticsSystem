@@ -1,4 +1,4 @@
-﻿using LogisticsSystem.Api.Contracts.Shipments;
+using LogisticsSystem.Api.Contracts.Shipments;
 using LogisticsSystem.Application.Authorization;
 using LogisticsSystem.Application.Common.Models;
 using LogisticsSystem.Application.Features.Dispatch.Queries.GetAssignmentHistory;
@@ -12,12 +12,14 @@ using LogisticsSystem.Application.Features.Shipments.Commands.PickupShipment;
 using LogisticsSystem.Application.Features.Shipments.Commands.StartTransit;
 using LogisticsSystem.Application.Features.Shipments.Commands.UpdateShipment;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetAllShipments;
+using LogisticsSystem.Application.Features.Shipments.Queries.GetMyShipments;
 using LogisticsSystem.Application.Features.Shipments.Queries.GetShipmentById;
 using LogisticsSystem.Application.Features.ShipmentStatusHistories.Queries.GetShipmentStatusHistory;
 using LogisticsSystem.Application.Features.ShipmentTrackings.Commands.AddShipmentLocation;
 using LogisticsSystem.Application.Features.ShipmentTrackings.DTOs;
 using LogisticsSystem.Application.Features.ShipmentTrackings.Queries.GetLatestShipmentLocation;
 using LogisticsSystem.Application.Features.ShipmentTrackings.Queries.GetShipmentTracking;
+using LogisticsSystem.Domain.Constants;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -44,6 +46,16 @@ namespace LogisticsSystem.Api.Controllers
             var shipment = await _sender.Send(new GetShipmentByIdQuery(id), cancellationToken);
 
             return CreatedAtAction(nameof(GetById), new { id }, shipment );
+        }
+
+        [Authorize(Roles = Roles.Customer)]
+        [HttpGet("my-shipments")]
+        public async Task<IActionResult> GetMyShipments(
+            [FromQuery] GetMyShipmentsQuery query,
+            CancellationToken cancellationToken)
+        {
+            var result = await _sender.Send(query, cancellationToken);
+            return Ok(result);
         }
 
         [Authorize(Policy = Policies.ShipmentView)]
