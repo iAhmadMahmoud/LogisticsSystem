@@ -42,5 +42,12 @@ namespace LogisticsSystem.Application.Authorization
         {
             public const string View = "Dashboard.View";
         }
+
+        public static class Vehicles
+        {
+            public const string View = "Vehicles.View";
+            public const string ViewAll = "Vehicles.ViewAll";
+            public const string Manage = "Vehicles.Manage";
+        }
     }
 }
