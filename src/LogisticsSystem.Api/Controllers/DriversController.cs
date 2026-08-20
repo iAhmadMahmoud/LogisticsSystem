@@ -1,5 +1,6 @@
-﻿using LogisticsSystem.Api.Contracts.Drivers;
+using LogisticsSystem.Api.Contracts.Drivers;
 using LogisticsSystem.Application.Authorization;
+using LogisticsSystem.Application.Features.Drivers.Commands.AssignVehicleToDriver;
 using LogisticsSystem.Application.Features.Drivers.Commands.CreateDriver;
 using LogisticsSystem.Application.Features.Drivers.Commands.UpdateDriverLocation;
 using LogisticsSystem.Application.Features.Drivers.Commands.UpdateDriverStatus;
@@ -93,6 +94,19 @@ namespace LogisticsSystem.Api.Controllers
         [HttpPatch("location")]
         public async Task<IActionResult> UpdateLocation([FromBody] UpdateDriverLocationCommand command, CancellationToken cancellationToken)
         {
+            await _sender.Send(command, cancellationToken);
+
+            return NoContent();
+        }
+
+        [Authorize(Policy = Policies.DriverManage)]
+        [HttpPost("{driverId:guid}/vehicle")]
+        public async Task<IActionResult> AssignVehicle(
+            Guid driverId,
+            [FromBody] AssignVehicleRequest request,
+            CancellationToken cancellationToken)
+        {
+            var command = new AssignVehicleToDriverCommand(driverId, request.VehicleId);
             await _sender.Send(command, cancellationToken);
 
             return NoContent();
