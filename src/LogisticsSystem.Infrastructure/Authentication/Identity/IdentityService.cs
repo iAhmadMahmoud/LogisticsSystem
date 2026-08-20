@@ -305,6 +305,18 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             EnsureSucceeded(result);
         }
 
+        public async Task UpdateProfileAsync(Guid userId, string firstName, string lastName, string? phoneNumber, CancellationToken cancellationToken = default)
+        {
+            var user = await GetUserByIdOrThrowAsync(userId.ToString(), ErrorMessages.UserNotFound);
+
+            user.FirstName = firstName;
+            user.LastName = lastName;
+            user.PhoneNumber = phoneNumber;
+
+            var result = await _userManager.UpdateAsync(user);
+            EnsureSucceeded(result);
+        }
+
         private async Task<ApplicationUser> GetUserByIdOrThrowAsync(string userId, string errorMessage)
         {
             var user = await _userManager.FindByIdAsync(userId);
