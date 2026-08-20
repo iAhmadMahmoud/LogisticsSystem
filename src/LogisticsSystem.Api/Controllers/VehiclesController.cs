@@ -3,6 +3,7 @@ using LogisticsSystem.Application.Authorization;
 using LogisticsSystem.Application.Features.Vehicles.Commands.CreateVehicle;
 using LogisticsSystem.Application.Features.Vehicles.Commands.DeleteVehicle;
 using LogisticsSystem.Application.Features.Vehicles.Commands.UpdateVehicle;
+using LogisticsSystem.Application.Features.Vehicles.Queries.GetAvailableVehicles;
 using LogisticsSystem.Application.Features.Vehicles.Queries.GetVehicleById;
 using LogisticsSystem.Application.Features.Vehicles.Queries.GetVehicles;
 using LogisticsSystem.Domain.Enums;
@@ -41,6 +42,23 @@ namespace LogisticsSystem.Api.Controllers
             var result = await _sender.Send(command, cancellationToken);
 
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+        }
+
+        [Authorize(Policy = Policies.VehicleView)]
+        [HttpGet("available")]
+        public async Task<IActionResult> GetAvailable(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] VehicleType? type = null,
+            CancellationToken cancellationToken = default)
+        {
+            var query = new GetAvailableVehiclesQuery(
+                PageNumber: pageNumber,
+                PageSize: pageSize,
+                Type: type);
+
+            var result = await _sender.Send(query, cancellationToken);
+            return Ok(result);
         }
 
         [Authorize(Policy = Policies.VehicleView)]
