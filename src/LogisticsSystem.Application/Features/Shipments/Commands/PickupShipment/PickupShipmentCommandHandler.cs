@@ -63,7 +63,9 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.PickupShipment
                 throw new KeyNotFoundException("Customer not found.");
             }
 
-            var driver = await _driverRepository.AsQueryable().FirstOrDefaultAsync(d => d.UserId == _currentUserService.UserId, cancellationToken);
+            var driver = await _driverRepository.FirstOrDefaultAsync(
+                new LogisticsSystem.Application.Features.Drivers.Specifications.DriverByUserIdSpecification(_currentUserService.UserId),
+                cancellationToken);
 
             if (driver is null)
             {
