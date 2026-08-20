@@ -3,6 +3,7 @@ using LogisticsSystem.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LogisticsSystem.IntegrationTests.Infrastructure
@@ -14,6 +15,17 @@ namespace LogisticsSystem.IntegrationTests.Infrastructure
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
+
+            builder.ConfigureAppConfiguration((context, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:LogisticsSystem"] = "Server=(localdb)\\mssqllocaldb;Database=LogisticsSystem_Test;Trusted_Connection=True;MultipleActiveResultSets=true",
+                    ["Jwt:SecretKey"] = "TestSuperSecretKeyForIntegrationTests1234567890!",
+                    ["Jwt:Issuer"] = "LogisticsSystem",
+                    ["Jwt:Audience"] = "LogisticsSystemUsers"
+                });
+            });
 
             builder.ConfigureServices(services =>
             {
