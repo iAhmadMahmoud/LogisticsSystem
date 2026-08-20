@@ -1,4 +1,6 @@
 using System.Net.Http.Headers;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Models.Authentication;
 using LogisticsSystem.Domain.Constants;
@@ -12,6 +14,11 @@ namespace LogisticsSystem.IntegrationTests.Infrastructure
 {
     public static class TestAuthHelper
     {
+        public static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
         public static async Task<string> GenerateJwtTokenAsync(
             IServiceProvider services,
             Guid userId,
@@ -149,6 +156,39 @@ namespace LogisticsSystem.IntegrationTests.Infrastructure
             await db.SaveChangesAsync();
 
             return (user, driver);
+        }
+
+        public static async Task<Vehicle> SeedVehicleAsync(
+            IServiceProvider services,
+            string plateNumber = "TEST-VEH-001",
+            string brand = "Ford",
+            string model = "Transit",
+            int year = 2023,
+            string color = "White",
+            VehicleType type = VehicleType.Van,
+            decimal capacity = 2000,
+            bool isActive = true)
+        {
+            using var scope = services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            var vehicle = new Vehicle
+            {
+                Id = Guid.NewGuid(),
+                PlateNumber = plateNumber,
+                Brand = brand,
+                Model = model,
+                ManufacturingYear = year,
+                Color = color,
+                Type = type,
+                Capacity = capacity,
+                IsActive = isActive
+            };
+
+            db.Vehicles.Add(vehicle);
+            await db.SaveChangesAsync();
+
+            return vehicle;
         }
     }
 }
