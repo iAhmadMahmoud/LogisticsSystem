@@ -2,6 +2,7 @@ using LogisticsSystem.Api.Contracts.Drivers;
 using LogisticsSystem.Application.Authorization;
 using LogisticsSystem.Application.Features.Drivers.Commands.AssignVehicleToDriver;
 using LogisticsSystem.Application.Features.Drivers.Commands.CreateDriver;
+using LogisticsSystem.Application.Features.Drivers.Commands.RemoveVehicleFromDriver;
 using LogisticsSystem.Application.Features.Drivers.Commands.UpdateDriverLocation;
 using LogisticsSystem.Application.Features.Drivers.Commands.UpdateDriverStatus;
 using LogisticsSystem.Application.Features.Drivers.Queries.GetAllDrivers;
@@ -108,6 +109,17 @@ namespace LogisticsSystem.Api.Controllers
         {
             var command = new AssignVehicleToDriverCommand(driverId, request.VehicleId);
             await _sender.Send(command, cancellationToken);
+
+            return NoContent();
+        }
+
+        [Authorize(Policy = Policies.DriverManage)]
+        [HttpDelete("{driverId:guid}/vehicle")]
+        public async Task<IActionResult> RemoveVehicle(
+            Guid driverId,
+            CancellationToken cancellationToken)
+        {
+            await _sender.Send(new RemoveVehicleFromDriverCommand(driverId), cancellationToken);
 
             return NoContent();
         }
