@@ -98,6 +98,11 @@ namespace LogisticsSystem.Infrastructure.Authentication.Authorization
                 // Users
 
                 options.AddPolicy(
+                    Policies.UserView,
+                    policy => policy.RequireRole(
+                        Roles.Admin));
+
+                options.AddPolicy(
                     Policies.UserManage,
                     policy => policy.RequireRole(
                         Roles.Admin));

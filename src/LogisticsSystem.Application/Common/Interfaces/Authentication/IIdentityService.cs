@@ -1,4 +1,6 @@
+using LogisticsSystem.Application.Common.Models;
 using LogisticsSystem.Application.Common.Models.Authentication;
+using LogisticsSystem.Application.Features.Users.DTOs;
 
 namespace LogisticsSystem.Application.Common.Interfaces.Authentication
 {
@@ -15,5 +17,10 @@ namespace LogisticsSystem.Application.Common.Interfaces.Authentication
         Task<Guid> CreateDriverAsync(CreateDriverIdentityRequest request,CancellationToken cancellationToken = default);
         Task UpdateProfileAsync(Guid userId, string firstName, string lastName, string? phoneNumber, CancellationToken cancellationToken = default);
         Task<UserInfoDto?> GetUserByIdAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<PagedResult<UserDto>> GetUsersAsync(int pageNumber, int pageSize, string? role, bool? isActive, string? searchTerm, CancellationToken cancellationToken = default);
+        Task<UserDetailsDto?> GetUserDetailsByIdAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<UserDetailsDto> UpdateUserByAdminAsync(Guid userId, string firstName, string lastName, string? phoneNumber, string email, string userName, CancellationToken cancellationToken = default);
+        Task SetUserStatusAsync(Guid userId, bool isActive, CancellationToken cancellationToken = default);
+        Task DeactivateOrDeleteUserAsync(Guid userId, CancellationToken cancellationToken = default);
     }
 }
