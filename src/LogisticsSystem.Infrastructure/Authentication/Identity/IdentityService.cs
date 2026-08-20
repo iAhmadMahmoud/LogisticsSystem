@@ -2,10 +2,12 @@ using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Common.Models;
 using LogisticsSystem.Application.Common.Models.Authentication;
+using LogisticsSystem.Application.Features.RoleManagement.DTOs;
 using LogisticsSystem.Application.Features.Users.DTOs;
 using LogisticsSystem.Application.Specifications;
 using LogisticsSystem.Domain.Constants;
 using LogisticsSystem.Domain.Entities;
+using LogisticsSystem.Domain.Exceptions;
 using LogisticsSystem.Infrastructure.Authentication.Email;
 using LogisticsSystem.Infrastructure.Authentication.Jwt;
 using LogisticsSystem.Infrastructure.Identity;
@@ -30,9 +32,22 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             public const string UserAccountInactive = "User account is inactive.";
             public const string EmailAlreadyExists = "Email already exists.";
             public const string UsernameAlreadyExists = "Username already exists.";
+            public const string RoleNotFound = "Role not found.";
+            public const string RoleAlreadyExists = "Role already exists.";
+            public const string CannotDeleteSystemRole = "Cannot delete system roles.";
+            public const string CannotDeleteAssignedRole = "Cannot delete a role that is currently assigned to users.";
         }
 
+        private static readonly HashSet<string> SystemRoles = new(StringComparer.OrdinalIgnoreCase)
+        {
+            Roles.Admin,
+            Roles.Dispatcher,
+            Roles.Driver,
+            Roles.Customer
+        };
+
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<IdentityRole<Guid>> _roleManager;
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
         private readonly IGenericRepository<Customer> _customerRepository;
         private readonly IGenericRepository<RefreshToken> _refreshTokenRepository;
@@ -45,6 +60,7 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
         public IdentityService(
             UserManager<ApplicationUser> userManager,
+            RoleManager<IdentityRole<Guid>> roleManager,
             IJwtTokenGenerator jwtTokenGenerator,
             IUnitOfWork unitOfWork,
             IOptions<JwtOptions> jwtOptions,
@@ -56,6 +72,7 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             ICurrentUserService currentUserService)
         {
             _userManager = userManager;
+            _roleManager = roleManager;
             _jwtTokenGenerator = jwtTokenGenerator;
             _unitOfWork = unitOfWork;
             _jwtOptions = jwtOptions.Value;
@@ -635,6 +652,116 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
         public async Task DeactivateOrDeleteUserAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             await SetUserStatusAsync(userId, false, cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<RoleDto>> GetRolesAsync(CancellationToken cancellationToken = default)
+        {
+            var roles = await _roleManager.Roles.AsNoTracking().ToListAsync(cancellationToken);
+            var roleDtos = new List<RoleDto>();
+
+            foreach (var role in roles)
+            {
+                var roleName = role.Name ?? string.Empty;
+                var users = await _userManager.GetUsersInRoleAsync(roleName);
+                var isSystemRole = SystemRoles.Contains(roleName);
+
+                roleDtos.Add(new RoleDto
+                {
+                    Id = role.Id,
+                    Name = roleName,
+                    UserCount = users.Count,
+                    IsSystemRole = isSystemRole
+                });
+            }
+
+            return roleDtos;
+        }
+
+        public async Task<RoleDto> CreateRoleAsync(string roleName, CancellationToken cancellationToken = default)
+        {
+            var normalizedName = roleName.Trim();
+
+            if (await _roleManager.RoleExistsAsync(normalizedName))
+            {
+                throw new InvalidOperationException(ErrorMessages.RoleAlreadyExists);
+            }
+
+            var role = new IdentityRole<Guid>(normalizedName);
+            var result = await _roleManager.CreateAsync(role);
+            EnsureSucceeded(result);
+
+            return new RoleDto
+            {
+                Id = role.Id,
+                Name = role.Name!,
+                UserCount = 0,
+                IsSystemRole = SystemRoles.Contains(role.Name!)
+            };
+        }
+
+        public async Task DeleteRoleAsync(Guid roleId, CancellationToken cancellationToken = default)
+        {
+            var role = await _roleManager.FindByIdAsync(roleId.ToString());
+            if (role is null)
+            {
+                throw new KeyNotFoundException(ErrorMessages.RoleNotFound);
+            }
+
+            if (SystemRoles.Contains(role.Name!))
+            {
+                throw new DomainException(ErrorMessages.CannotDeleteSystemRole);
+            }
+
+            var users = await _userManager.GetUsersInRoleAsync(role.Name!);
+            if (users.Count > 0)
+            {
+                throw new DomainException(ErrorMessages.CannotDeleteAssignedRole);
+            }
+
+            var result = await _roleManager.DeleteAsync(role);
+            EnsureSucceeded(result);
+        }
+
+        public async Task AssignRoleToUserAsync(Guid userId, string roleName, CancellationToken cancellationToken = default)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user is null)
+            {
+                throw new KeyNotFoundException(ErrorMessages.UserNotFound);
+            }
+
+            var normalizedRole = roleName.Trim();
+            if (!await _roleManager.RoleExistsAsync(normalizedRole))
+            {
+                throw new KeyNotFoundException(ErrorMessages.RoleNotFound);
+            }
+
+            if (!await _userManager.IsInRoleAsync(user, normalizedRole))
+            {
+                var result = await _userManager.AddToRoleAsync(user, normalizedRole);
+                EnsureSucceeded(result);
+            }
+        }
+
+        public async Task RemoveRoleFromUserAsync(Guid userId, string roleName, CancellationToken cancellationToken = default)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user is null)
+            {
+                throw new KeyNotFoundException(ErrorMessages.UserNotFound);
+            }
+
+            var normalizedRole = roleName.Trim();
+            if (!await _roleManager.RoleExistsAsync(normalizedRole))
+            {
+                throw new KeyNotFoundException(ErrorMessages.RoleNotFound);
+            }
+
+            if (await _userManager.IsInRoleAsync(user, normalizedRole))
+            {
+                var result = await _userManager.RemoveFromRoleAsync(user, normalizedRole);
+                EnsureSucceeded(result);
+            }
         }
     }
 }

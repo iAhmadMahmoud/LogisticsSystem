@@ -8,6 +8,7 @@ using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
 using LogisticsSystem.Infrastructure.Identity;
 using LogisticsSystem.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LogisticsSystem.IntegrationTests.Infrastructure
@@ -19,6 +20,21 @@ namespace LogisticsSystem.IntegrationTests.Infrastructure
             PropertyNameCaseInsensitive = true,
             Converters = { new JsonStringEnumConverter() }
         };
+
+        public static async Task EnsureRolesSeededAsync(IServiceProvider services)
+        {
+            using var scope = services.CreateScope();
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+            string[] roles = [Roles.Admin, Roles.Customer, Roles.Driver, Roles.Dispatcher];
+
+            foreach (var role in roles)
+            {
+                if (!await roleManager.RoleExistsAsync(role))
+                {
+                    await roleManager.CreateAsync(new IdentityRole<Guid>(role));
+                }
+            }
+        }
         public static async Task<string> GenerateJwtTokenAsync(
             IServiceProvider services,
             Guid userId,
