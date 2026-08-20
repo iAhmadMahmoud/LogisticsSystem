@@ -98,5 +98,47 @@ namespace LogisticsSystem.UnitTests.Shipments
             await act.Should().ThrowAsync<KeyNotFoundException>()
                 .WithMessage("Customer profile not found.");
         }
+
+        [Fact]
+        public async Task Handle_EnforcesCustomerIsolation_QueriesOnlyForAuthenticatedCustomer()
+        {
+            // Arrange
+            var currentUserId = Guid.NewGuid();
+            var currentCustomerId = Guid.NewGuid();
+            var otherCustomerId = Guid.NewGuid();
+
+            var currentCustomer = new Customer { Id = currentCustomerId, UserId = currentUserId };
+
+            var currentCustomerShipment = new Shipment
+            {
+                Id = Guid.NewGuid(),
+                CustomerId = currentCustomerId,
+                TrackingNumber = "TRK-MINE-001"
+            };
+
+            _currentUserServiceMock.Setup(x => x.UserId).Returns(currentUserId);
+            _customerRepoMock.Setup(x => x.FirstOrDefaultAsync(
+                    It.IsAny<CustomerByUserIdSpecification>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(currentCustomer);
+
+            _shipmentRepoMock.Setup(x => x.CountAsync(It.IsAny<MyShipmentsSpecification>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(1);
+            _shipmentRepoMock.Setup(x => x.ListAsync(It.IsAny<MyShipmentsSpecification>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<Shipment> { currentCustomerShipment });
+
+            _mapperMock.Setup(x => x.Map<IReadOnlyList<ShipmentDto>>(It.IsAny<IReadOnlyList<Shipment>>()))
+                .Returns(new List<ShipmentDto> { new ShipmentDto { Id = currentCustomerShipment.Id, TrackingNumber = "TRK-MINE-001" } });
+
+            // Act
+            var result = await _handler.Handle(new GetMyShipmentsQuery(), CancellationToken.None);
+
+            // Assert
+            result.Items.Should().HaveCount(1);
+            result.Items[0].TrackingNumber.Should().Be("TRK-MINE-001");
+            _customerRepoMock.Verify(x => x.FirstOrDefaultAsync(
+                It.Is<CustomerByUserIdSpecification>(s => s != null),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
     }
 }

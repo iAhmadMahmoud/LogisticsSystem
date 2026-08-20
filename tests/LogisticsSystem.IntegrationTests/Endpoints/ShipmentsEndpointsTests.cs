@@ -50,5 +50,15 @@ namespace LogisticsSystem.IntegrationTests.Endpoints
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }
+
+        [Fact]
+        public async Task GetMyShipments_WithoutToken_ReturnsUnauthorized()
+        {
+            // Act
+            var response = await _client.GetAsync("/api/Shipments/my-shipments");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        }
     }
 }
