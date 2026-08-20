@@ -109,5 +109,46 @@ namespace LogisticsSystem.IntegrationTests.Infrastructure
 
             return shipment;
         }
+
+        public static async Task<(ApplicationUser User, Driver Driver)> SeedDriverAsync(
+            IServiceProvider services,
+            string firstName = "Bob",
+            string lastName = "Driver",
+            string email = "driver@test.com",
+            string licenseNumber = "DL-TEST-12345",
+            DriverStatus status = DriverStatus.Available)
+        {
+            using var scope = services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = email,
+                NormalizedUserName = email.ToUpperInvariant(),
+                Email = email,
+                NormalizedEmail = email.ToUpperInvariant(),
+                FirstName = firstName,
+                LastName = lastName,
+                PhoneNumber = "+1987654321",
+                SecurityStamp = Guid.NewGuid().ToString(),
+                ConcurrencyStamp = Guid.NewGuid().ToString(),
+                IsActive = true
+            };
+
+            var driver = new Driver
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                LicenseNumber = licenseNumber,
+                Status = status
+            };
+
+            db.Users.Add(user);
+            db.Drivers.Add(driver);
+            await db.SaveChangesAsync();
+
+            return (user, driver);
+        }
     }
 }
