@@ -1,5 +1,6 @@
 using LogisticsSystem.Application.Authorization;
 using LogisticsSystem.Application.Features.Dashboard.DTOs;
+using LogisticsSystem.Application.Features.Dashboard.Queries.GetDriverDashboardMetrics;
 using LogisticsSystem.Application.Features.Dashboard.Queries.GetShipmentDashboardMetrics;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -24,6 +25,15 @@ namespace LogisticsSystem.Api.Controllers
         public async Task<IActionResult> GetShipmentMetrics(CancellationToken cancellationToken)
         {
             var result = await _sender.Send(new GetShipmentDashboardMetricsQuery(), cancellationToken);
+
+            return Ok(result);
+        }
+
+        [HttpGet("drivers")]
+        [ProducesResponseType(typeof(DriverDashboardMetricsDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetDriverMetrics(CancellationToken cancellationToken)
+        {
+            var result = await _sender.Send(new GetDriverDashboardMetricsQuery(), cancellationToken);
 
             return Ok(result);
         }

@@ -118,5 +118,88 @@ namespace LogisticsSystem.IntegrationTests.Endpoints
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }
+
+        [Fact]
+        public async Task GetDriverMetrics_WithDispatcherRole_ReturnsOkAndValidMetrics()
+        {
+            // Arrange
+            await TestAuthHelper.EnsureRolesSeededAsync(_factory.Services);
+
+            var (user, driver) = await TestAuthHelper.SeedDriverAsync(
+                _factory.Services,
+                email: $"dash_driver_{Guid.NewGuid():N}@test.com",
+                licenseNumber: $"LIC-{Guid.NewGuid():N}");
+
+            var dispatcherToken = await TestAuthHelper.GenerateJwtTokenAsync(
+                _factory.Services,
+                Guid.NewGuid(),
+                role: Roles.Dispatcher);
+
+            var client = TestAuthHelper.CreateAuthenticatedClient(_factory, dispatcherToken);
+
+            // Act
+            var response = await client.GetAsync("/api/Dashboard/drivers");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var result = await response.Content.ReadFromJsonAsync<DriverDashboardMetricsDto>(TestAuthHelper.JsonOptions);
+            result.Should().NotBeNull();
+            result!.TotalDrivers.Should().BeGreaterThanOrEqualTo(1);
+        }
+
+        [Fact]
+        public async Task GetDriverMetrics_WithAdminRole_ReturnsOkAndValidMetrics()
+        {
+            // Arrange
+            await TestAuthHelper.EnsureRolesSeededAsync(_factory.Services);
+
+            var adminToken = await TestAuthHelper.GenerateJwtTokenAsync(
+                _factory.Services,
+                Guid.NewGuid(),
+                role: Roles.Admin);
+
+            var client = TestAuthHelper.CreateAuthenticatedClient(_factory, adminToken);
+
+            // Act
+            var response = await client.GetAsync("/api/Dashboard/drivers");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var result = await response.Content.ReadFromJsonAsync<DriverDashboardMetricsDto>(TestAuthHelper.JsonOptions);
+            result.Should().NotBeNull();
+        }
+
+        [Fact]
+        public async Task GetDriverMetrics_WithCustomerRole_ReturnsForbidden()
+        {
+            // Arrange
+            await TestAuthHelper.EnsureRolesSeededAsync(_factory.Services);
+
+            var customerToken = await TestAuthHelper.GenerateJwtTokenAsync(
+                _factory.Services,
+                Guid.NewGuid(),
+                role: Roles.Customer);
+
+            var client = TestAuthHelper.CreateAuthenticatedClient(_factory, customerToken);
+
+            // Act
+            var response = await client.GetAsync("/api/Dashboard/drivers");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
+        public async Task GetDriverMetrics_WithoutToken_ReturnsUnauthorized()
+        {
+            // Arrange
+            var client = _factory.CreateClient();
+
+            // Act
+            var response = await client.GetAsync("/api/Dashboard/drivers");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        }
     }
 }
