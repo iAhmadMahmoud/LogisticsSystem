@@ -63,6 +63,86 @@ namespace LogisticsSystem.IntegrationTests.Endpoints
         }
 
         [Fact]
+        public async Task CreateVehicle_WhenDuplicatePlateNumber_ReturnsConflict()
+        {
+            // Arrange
+            var existingVehicle = await TestAuthHelper.SeedVehicleAsync(
+                _factory.Services,
+                plateNumber: $"DUP-{Guid.NewGuid():N}");
+
+            var dispatcherToken = await TestAuthHelper.GenerateJwtTokenAsync(
+                _factory.Services,
+                Guid.NewGuid(),
+                role: Roles.Dispatcher);
+
+            var client = TestAuthHelper.CreateAuthenticatedClient(_factory, dispatcherToken);
+
+            var request = new CreateVehicleRequest(
+                PlateNumber: existingVehicle.PlateNumber,
+                Brand: "Ford",
+                Model: "Transit",
+                ManufacturingYear: 2022,
+                Color: "White",
+                Type: VehicleType.Van,
+                Capacity: 2000);
+
+            // Act
+            var response = await client.PostAsJsonAsync("/api/Vehicles", request);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        }
+
+        [Fact]
+        public async Task CreateVehicle_WithCustomerRole_ReturnsForbidden()
+        {
+            // Arrange
+            var customerToken = await TestAuthHelper.GenerateJwtTokenAsync(
+                _factory.Services,
+                Guid.NewGuid(),
+                role: Roles.Customer);
+
+            var client = TestAuthHelper.CreateAuthenticatedClient(_factory, customerToken);
+
+            var request = new CreateVehicleRequest(
+                PlateNumber: $"FORBID-{Guid.NewGuid():N}",
+                Brand: "Ford",
+                Model: "Transit",
+                ManufacturingYear: 2022,
+                Color: "White",
+                Type: VehicleType.Van,
+                Capacity: 2000);
+
+            // Act
+            var response = await client.PostAsJsonAsync("/api/Vehicles", request);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
+        public async Task CreateVehicle_WithoutToken_ReturnsUnauthorized()
+        {
+            // Arrange
+            var client = _factory.CreateClient();
+
+            var request = new CreateVehicleRequest(
+                PlateNumber: $"UNAUTH-{Guid.NewGuid():N}",
+                Brand: "Ford",
+                Model: "Transit",
+                ManufacturingYear: 2022,
+                Color: "White",
+                Type: VehicleType.Van,
+                Capacity: 2000);
+
+            // Act
+            var response = await client.PostAsJsonAsync("/api/Vehicles", request);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        }
+
+        [Fact]
         public async Task GetVehicleById_WhenExists_ReturnsOk()
         {
             // Arrange
@@ -86,6 +166,32 @@ namespace LogisticsSystem.IntegrationTests.Endpoints
             result.Should().NotBeNull();
             result!.Id.Should().Be(vehicle.Id);
             result.PlateNumber.Should().Be(vehicle.PlateNumber);
+        }
+
+        [Fact]
+        public async Task GetVehicles_WithFilters_ReturnsPagedResult()
+        {
+            // Arrange
+            var vehicle = await TestAuthHelper.SeedVehicleAsync(
+                _factory.Services,
+                plateNumber: $"LIST-{Guid.NewGuid():N}",
+                brand: "MercedesBenz");
+
+            var dispatcherToken = await TestAuthHelper.GenerateJwtTokenAsync(
+                _factory.Services,
+                Guid.NewGuid(),
+                role: Roles.Dispatcher);
+
+            var client = TestAuthHelper.CreateAuthenticatedClient(_factory, dispatcherToken);
+
+            // Act
+            var response = await client.GetAsync("/api/Vehicles?pageNumber=1&pageSize=10&searchTerm=MercedesBenz");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var result = await response.Content.ReadFromJsonAsync<PagedResult<VehicleDto>>(TestAuthHelper.JsonOptions);
+            result.Should().NotBeNull();
+            result!.Items.Should().Contain(v => v.Id == vehicle.Id);
         }
 
         [Fact]
@@ -137,6 +243,70 @@ namespace LogisticsSystem.IntegrationTests.Endpoints
             result!.Items.Should().Contain(v => v.Id == availableVehicle.Id);
             result.Items.Should().NotContain(v => v.Id == inactiveVehicle.Id);
             result.Items.Should().NotContain(v => v.Id == assignedVehicle.Id);
+        }
+
+        [Fact]
+        public async Task UpdateVehicle_WithDispatcherRole_ReturnsOkAndPersists()
+        {
+            // Arrange
+            var vehicle = await TestAuthHelper.SeedVehicleAsync(
+                _factory.Services,
+                plateNumber: $"UPD-{Guid.NewGuid():N}");
+
+            var dispatcherToken = await TestAuthHelper.GenerateJwtTokenAsync(
+                _factory.Services,
+                Guid.NewGuid(),
+                role: Roles.Dispatcher);
+
+            var client = TestAuthHelper.CreateAuthenticatedClient(_factory, dispatcherToken);
+
+            var request = new UpdateVehicleRequest(
+                PlateNumber: vehicle.PlateNumber,
+                Brand: "UpdatedBrand",
+                Model: "UpdatedModel",
+                ManufacturingYear: 2024,
+                Color: "Black",
+                Type: VehicleType.Truck,
+                Capacity: 5000,
+                IsActive: true);
+
+            // Act
+            var response = await client.PutAsJsonAsync($"/api/Vehicles/{vehicle.Id}", request);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var result = await response.Content.ReadFromJsonAsync<VehicleDto>(TestAuthHelper.JsonOptions);
+            result.Should().NotBeNull();
+            result!.Brand.Should().Be("UpdatedBrand");
+            result.Model.Should().Be("UpdatedModel");
+            result.Color.Should().Be("Black");
+        }
+
+        [Fact]
+        public async Task DeleteVehicle_WhenUnassigned_ReturnsNoContent()
+        {
+            // Arrange
+            var vehicle = await TestAuthHelper.SeedVehicleAsync(
+                _factory.Services,
+                plateNumber: $"DELOK-{Guid.NewGuid():N}");
+
+            var token = await TestAuthHelper.GenerateJwtTokenAsync(
+                _factory.Services,
+                Guid.NewGuid(),
+                role: Roles.Dispatcher);
+
+            var client = TestAuthHelper.CreateAuthenticatedClient(_factory, token);
+
+            // Act
+            var response = await client.DeleteAsync($"/api/Vehicles/{vehicle.Id}");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var vehicleInDb = await db.Vehicles.FirstOrDefaultAsync(v => v.Id == vehicle.Id);
+            vehicleInDb.Should().BeNull();
         }
 
         [Fact]
