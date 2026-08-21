@@ -48,98 +48,106 @@ namespace LogisticsSystem.Application.Features.Dispatch.Commands.RejectDispatchA
             RejectDispatchAssignmentCommand request,
             CancellationToken cancellationToken)
         {
-            // 1. Load assignment
-            var assignment = await _dispatchAssignmentRepository
-                .GetByIdAsync(request.AssignmentId, cancellationToken);
-
-            if (assignment is null)
+            await LogisticsSystem.Application.Features.Shipments.Helpers.ShipmentStatusTransitionValidator.StateMutationLock.WaitAsync(cancellationToken);
+            try
             {
-                throw new KeyNotFoundException(
-                    "Dispatch assignment not found.");
-            }
+                // 1. Load assignment
+                var assignment = await _dispatchAssignmentRepository
+                    .GetByIdAsync(request.AssignmentId, cancellationToken);
 
-            // 2. Make sure assignment is still pending
-            if (assignment.Status != AssignmentStatus.Pending)
-            {
-                throw new DomainException(
-                    $"Dispatch assignment cannot be rejected because its status is {assignment.Status}.");
-            }
-
-            // 3. Get current driver's profile
-            var driver = await _driverRepository
-                .AsQueryable()
-                .FirstOrDefaultAsync(
-                    x => x.UserId == _currentUserService.UserId,
-                    cancellationToken);
-
-            if (driver is null)
-            {
-                throw new UnauthorizedAccessException(
-                    "Driver profile not found.");
-            }
-
-            // 4. Make sure this assignment belongs to the current driver
-            if (assignment.DriverId != driver.Id)
-            {
-                throw new UnauthorizedAccessException(
-                    "You are not authorized to reject this dispatch assignment.");
-            }
-
-            // 5. Load shipment explicitly
-            var shipment = await _shipmentRepository
-                .GetByIdAsync(assignment.ShipmentId, cancellationToken);
-
-            if (shipment is null)
-            {
-                throw new KeyNotFoundException(
-                    "Shipment not found.");
-            }
-
-            // 6. Reject current assignment
-            assignment.Status = AssignmentStatus.Rejected;
-            assignment.RespondedAt = DateTime.UtcNow;
-
-            _dispatchAssignmentRepository.Update(assignment);
-
-            // 7. Find the next available driver
-            var nextDriver =
-                await _driverAssignmentService.FindBestAvailableDriverAsync(
-                    shipment,
-                    cancellationToken);
-
-            // 8. Create a new assignment if another driver is available, otherwise notify customer
-            if (nextDriver is not null)
-            {
-                await _dispatchAssignmentService.CreateAssignmentAsync(
-                    shipment,
-                    nextDriver,
-                    cancellationToken);
-            }
-            else
-            {
-                var customer = await _customerRepository.GetByIdAsync(
-                    shipment.CustomerId,
-                    cancellationToken);
-
-                if (customer is not null)
+                if (assignment is null)
                 {
-                    await _notificationService.CreateAsync(
-                        customer.UserId,
-                        "No Driver Available",
-                        $"Unable to find an available driver for shipment {shipment.TrackingNumber}.",
-                        NotificationType.NoDriverAvailable,
+                    throw new KeyNotFoundException(
+                        "Dispatch assignment not found.");
+                }
+
+                // 2. Make sure assignment is still pending
+                if (assignment.Status != AssignmentStatus.Pending)
+                {
+                    throw new DomainException(
+                        $"Dispatch assignment cannot be rejected because its status is {assignment.Status}.");
+                }
+
+                // 3. Get current driver's profile
+                var driver = await _driverRepository
+                    .AsQueryable()
+                    .FirstOrDefaultAsync(
+                        x => x.UserId == _currentUserService.UserId,
                         cancellationToken);
 
-                    await _notificationService.SendRealtimeAsync(
-                        customer.UserId,
-                        "No Driver Available",
-                        $"Unable to find an available driver for shipment {shipment.TrackingNumber}.",
+                if (driver is null)
+                {
+                    throw new UnauthorizedAccessException(
+                        "Driver profile not found.");
+                }
+
+                // 4. Make sure this assignment belongs to the current driver
+                if (assignment.DriverId != driver.Id)
+                {
+                    throw new UnauthorizedAccessException(
+                        "You are not authorized to reject this dispatch assignment.");
+                }
+
+                // 5. Load shipment explicitly
+                var shipment = await _shipmentRepository
+                    .GetByIdAsync(assignment.ShipmentId, cancellationToken);
+
+                if (shipment is null)
+                {
+                    throw new KeyNotFoundException(
+                        "Shipment not found.");
+                }
+
+                // 6. Reject current assignment
+                assignment.Status = AssignmentStatus.Rejected;
+                assignment.RespondedAt = DateTime.UtcNow;
+
+                _dispatchAssignmentRepository.Update(assignment);
+
+                // 7. Find the next available driver
+                var nextDriver =
+                    await _driverAssignmentService.FindBestAvailableDriverAsync(
+                        shipment,
+                        cancellationToken);
+
+                // 8. Create a new assignment if another driver is available, otherwise notify customer
+                if (nextDriver is not null)
+                {
+                    await _dispatchAssignmentService.CreateAssignmentAsync(
+                        shipment,
+                        nextDriver,
                         cancellationToken);
                 }
-            }
+                else
+                {
+                    var customer = await _customerRepository.GetByIdAsync(
+                        shipment.CustomerId,
+                        cancellationToken);
 
-            // 9. Save rejection + new assignment or notification
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+                    if (customer is not null)
+                    {
+                        await _notificationService.CreateAsync(
+                            customer.UserId,
+                            "No Driver Available",
+                            $"Unable to find an available driver for shipment {shipment.TrackingNumber}.",
+                            NotificationType.NoDriverAvailable,
+                            cancellationToken);
+
+                        await _notificationService.SendRealtimeAsync(
+                            customer.UserId,
+                            "No Driver Available",
+                            $"Unable to find an available driver for shipment {shipment.TrackingNumber}.",
+                            cancellationToken);
+                    }
+                }
+
+                // 9. Save rejection + new assignment or notification
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+            finally
+            {
+                LogisticsSystem.Application.Features.Shipments.Helpers.ShipmentStatusTransitionValidator.StateMutationLock.Release();
+            }
         }
     }
 }
