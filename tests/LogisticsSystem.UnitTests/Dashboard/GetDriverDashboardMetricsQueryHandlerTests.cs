@@ -127,5 +127,50 @@ namespace LogisticsSystem.UnitTests.Dashboard
             result.ActiveDrivers.Should().Be(5); // 6 total - 1 suspended
             result.InactiveDrivers.Should().Be(1); // 1 suspended
         }
+
+        [Fact]
+        public async Task Handle_WhenAllDriversSuspended_ActiveDriversIsZeroAndInactiveEqualsTotal()
+        {
+            // Arrange
+            var drivers = new List<Driver>
+            {
+                new Driver { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), LicenseNumber = "S1", Status = DriverStatus.Suspended },
+                new Driver { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), LicenseNumber = "S2", Status = DriverStatus.Suspended }
+            };
+
+            await _context.Drivers.AddRangeAsync(drivers);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _handler.Handle(new GetDriverDashboardMetricsQuery(), CancellationToken.None);
+
+            // Assert
+            result.TotalDrivers.Should().Be(2);
+            result.SuspendedDrivers.Should().Be(2);
+            result.ActiveDrivers.Should().Be(0);
+            result.InactiveDrivers.Should().Be(2);
+        }
+
+        [Fact]
+        public async Task Handle_WhenAllDriversAssignedVehicles_DriversWithoutVehiclesIsZero()
+        {
+            // Arrange
+            var drivers = new List<Driver>
+            {
+                new Driver { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), LicenseNumber = "V1", Status = DriverStatus.Available, VehicleId = Guid.NewGuid() },
+                new Driver { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), LicenseNumber = "V2", Status = DriverStatus.Busy, VehicleId = Guid.NewGuid() }
+            };
+
+            await _context.Drivers.AddRangeAsync(drivers);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _handler.Handle(new GetDriverDashboardMetricsQuery(), CancellationToken.None);
+
+            // Assert
+            result.TotalDrivers.Should().Be(2);
+            result.DriversWithVehicles.Should().Be(2);
+            result.DriversWithoutVehicles.Should().Be(0);
+        }
     }
 }

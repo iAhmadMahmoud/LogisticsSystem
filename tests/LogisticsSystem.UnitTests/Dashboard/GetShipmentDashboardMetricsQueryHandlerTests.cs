@@ -139,5 +139,29 @@ namespace LogisticsSystem.UnitTests.Dashboard
             result.ShipmentsCreatedToday.Should().Be(3); // 1 Pending + 1 Assigned + 1 Cancelled
             result.ShipmentsDeliveredToday.Should().Be(1); // 1 Delivered with DeliveredAt = today
         }
+
+        [Fact]
+        public async Task Handle_WhenAllShipmentsInSameStatus_CalculatesAccurately()
+        {
+            // Arrange
+            var customerId = Guid.NewGuid();
+            var shipments = new List<Shipment>
+            {
+                new Shipment { Id = Guid.NewGuid(), CustomerId = customerId, Status = ShipmentStatus.Pending, CreatedAt = DateTime.UtcNow },
+                new Shipment { Id = Guid.NewGuid(), CustomerId = customerId, Status = ShipmentStatus.Pending, CreatedAt = DateTime.UtcNow }
+            };
+
+            await _context.Shipments.AddRangeAsync(shipments);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _handler.Handle(new GetShipmentDashboardMetricsQuery(), CancellationToken.None);
+
+            // Assert
+            result.TotalShipments.Should().Be(2);
+            result.PendingShipments.Should().Be(2);
+            result.DeliveredShipments.Should().Be(0);
+            result.ShipmentsCreatedToday.Should().Be(2);
+        }
     }
 }
