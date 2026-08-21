@@ -43,69 +43,76 @@ namespace LogisticsSystem.Application.Features.Shipments.Commands.PickupShipment
 
         public async Task Handle(PickupShipmentCommand request, CancellationToken cancellationToken)
         {
-            var shipment = await _shipmentRepository.GetByIdAsync(request.ShipmentId, cancellationToken);
-
-            if (shipment is null)
+            await ShipmentStatusTransitionValidator.StateMutationLock.WaitAsync(cancellationToken);
+            try
             {
-                throw new KeyNotFoundException("Shipment not found.");
-            }
+                var shipment = await _shipmentRepository.GetByIdAsync(request.ShipmentId, cancellationToken);
 
-            if (shipment.DriverId is null)
+                if (shipment is null)
+                {
+                    throw new KeyNotFoundException("Shipment not found.");
+                }
+
+                if (shipment.DriverId is null)
+                {
+                    throw new DomainException("Shipment has no assigned driver.");
+                }
+
+                var customer = await _customerRepository.GetByIdAsync(shipment.CustomerId, cancellationToken);
+
+                if (customer is null)
+                {
+                    throw new KeyNotFoundException("Customer not found.");
+                }
+
+                var driver = await _driverRepository.FirstOrDefaultAsync(
+                    new LogisticsSystem.Application.Features.Drivers.Specifications.DriverByUserIdSpecification(_currentUserService.UserId),
+                    cancellationToken);
+
+                if (driver is null)
+                {
+                    throw new UnauthorizedAccessException("Driver profile not found.");
+                }
+
+                if (shipment.DriverId != driver.Id)
+                {
+                    throw new UnauthorizedAccessException("You are not assigned to this shipment.");
+                }
+
+                if (!ShipmentStatusTransitionValidator.CanTransition(shipment.Status, ShipmentStatus.PickedUp))
+                {
+                    throw new DomainException($"Shipment cannot transition from {shipment.Status} to PickedUp.");
+                }
+
+                shipment.Status = ShipmentStatus.PickedUp;
+                shipment.PickedUpAt = DateTime.UtcNow;
+
+                _shipmentRepository.Update(shipment);
+
+                await _statusHistoryService.AddAsync(shipment, ShipmentStatus.PickedUp, _currentUserService.UserId, cancellationToken);
+
+                await _notificationService.CreateAsync(
+                    customer.UserId,
+                    "Shipment Picked Up",
+                    $"Shipment {shipment.TrackingNumber} has been picked up by the driver.",
+                    NotificationType.ShipmentPickedUp,
+                    cancellationToken);
+
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+                await _notificationService.SendRealtimeAsync(customer.UserId, "Shipment Picked Up", $"Shipment {shipment.TrackingNumber} has been picked up by the driver.", cancellationToken);
+
+                await _trackingRealtimeService.ShipmentStatusChangedAsync(
+                    shipment.Id,
+                    ShipmentStatus.PickedUp,
+                    DateTime.UtcNow,
+                    null,
+                    cancellationToken);
+            }
+            finally
             {
-                throw new DomainException("Shipment has no assigned driver.");
+                ShipmentStatusTransitionValidator.StateMutationLock.Release();
             }
-
-
-            var customer = await _customerRepository.GetByIdAsync(shipment.CustomerId, cancellationToken);
-
-            if (customer is null)
-            {
-                throw new KeyNotFoundException("Customer not found.");
-            }
-
-            var driver = await _driverRepository.FirstOrDefaultAsync(
-                new LogisticsSystem.Application.Features.Drivers.Specifications.DriverByUserIdSpecification(_currentUserService.UserId),
-                cancellationToken);
-
-            if (driver is null)
-            {
-                throw new UnauthorizedAccessException("Driver profile not found.");
-            }
-
-            if (shipment.DriverId != driver.Id)
-            {
-                throw new UnauthorizedAccessException("You are not assigned to this shipment.");
-            }
-
-            if (!ShipmentStatusTransitionValidator.CanTransition(shipment.Status, ShipmentStatus.PickedUp))
-            {
-                throw new DomainException($"Shipment cannot transition from {shipment.Status} to PickedUp.");
-            }
-
-            shipment.Status = ShipmentStatus.PickedUp;
-            shipment.PickedUpAt = DateTime.UtcNow;
-
-            _shipmentRepository.Update(shipment);
-
-            await _statusHistoryService.AddAsync(shipment, ShipmentStatus.PickedUp, _currentUserService.UserId, cancellationToken);
-
-            await _notificationService.CreateAsync(
-                customer.UserId,
-                "Shipment Picked Up",
-                $"Shipment {shipment.TrackingNumber} has been picked up by the driver.",
-                NotificationType.ShipmentPickedUp,
-                cancellationToken);
-
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            await _notificationService.SendRealtimeAsync(customer.UserId, "Shipment Picked Up", $"Shipment {shipment.TrackingNumber} has been picked up by the driver.", cancellationToken);
-
-            await _trackingRealtimeService.ShipmentStatusChangedAsync(
-                shipment.Id,
-                ShipmentStatus.PickedUp,
-                DateTime.UtcNow,
-                null,
-                cancellationToken);
         }
     }
 }
