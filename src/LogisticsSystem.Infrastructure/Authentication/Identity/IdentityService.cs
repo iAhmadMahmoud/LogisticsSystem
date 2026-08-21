@@ -11,6 +11,7 @@ using LogisticsSystem.Domain.Exceptions;
 using LogisticsSystem.Infrastructure.Authentication.Email;
 using LogisticsSystem.Infrastructure.Authentication.Jwt;
 using LogisticsSystem.Infrastructure.Identity;
+using LogisticsSystem.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
@@ -57,6 +58,7 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
         private readonly IEmailSender _emailSender;
         private readonly EmailOptions _emailOptions;
         private readonly ICurrentUserService _currentUserService;
+        private readonly ApplicationDbContext _context;
 
         public IdentityService(
             UserManager<ApplicationUser> userManager,
@@ -69,7 +71,8 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             IGenericRepository<RefreshToken> refreshTokenRepository,
             IEmailSender emailSender,
             IOptions<EmailOptions> emailOptions,
-            ICurrentUserService currentUserService)
+            ICurrentUserService currentUserService,
+            ApplicationDbContext context)
         {
             _userManager = userManager;
             _roleManager = roleManager;
@@ -82,6 +85,7 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             _emailSender = emailSender;
             _emailOptions = emailOptions.Value;
             _currentUserService = currentUserService;
+            _context = context;
         }
 
         public async Task ChangePasswordAsync(ChangePasswordRequest request)
@@ -513,25 +517,33 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
                 .Take(pageSize)
                 .ToListAsync(cancellationToken);
 
-            var userDtos = new List<UserDto>();
-            foreach (var user in users)
+            var userIds = users.Select(u => u.Id).ToList();
+
+            var userRoles = await _context.UserRoles
+                .AsNoTracking()
+                .Where(ur => userIds.Contains(ur.UserId))
+                .Join(_context.Roles.AsNoTracking(), ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name })
+                .ToListAsync(cancellationToken);
+
+            var rolesByUser = userRoles
+                .Where(x => !string.IsNullOrEmpty(x.RoleName))
+                .GroupBy(x => x.UserId)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.RoleName!).ToList());
+
+            var userDtos = users.Select(user => new UserDto
             {
-                var roles = await _userManager.GetRolesAsync(user);
-                userDtos.Add(new UserDto
-                {
-                    Id = user.Id,
-                    FirstName = user.FirstName,
-                    LastName = user.LastName,
-                    UserName = user.UserName ?? string.Empty,
-                    Email = user.Email ?? string.Empty,
-                    PhoneNumber = user.PhoneNumber,
-                    ProfileImageUrl = user.ProfileImageUrl,
-                    IsActive = user.IsActive,
-                    Roles = roles.ToList(),
-                    CreatedAt = user.CreatedAt,
-                    LastLoginAt = user.LastLoginAt
-                });
-            }
+                Id = user.Id,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                UserName = user.UserName ?? string.Empty,
+                Email = user.Email ?? string.Empty,
+                PhoneNumber = user.PhoneNumber,
+                ProfileImageUrl = user.ProfileImageUrl,
+                IsActive = user.IsActive,
+                Roles = rolesByUser.GetValueOrDefault(user.Id, []),
+                CreatedAt = user.CreatedAt,
+                LastLoginAt = user.LastLoginAt
+            }).ToList();
 
             return new PagedResult<UserDto>
             {
@@ -551,7 +563,9 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
                 .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
 
             if (user is null)
+            {
                 return null;
+            }
 
             var roles = await _userManager.GetRolesAsync(user);
 
@@ -657,24 +671,24 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
         public async Task<IReadOnlyList<RoleDto>> GetRolesAsync(CancellationToken cancellationToken = default)
         {
             var roles = await _roleManager.Roles.AsNoTracking().ToListAsync(cancellationToken);
-            var roleDtos = new List<RoleDto>();
 
-            foreach (var role in roles)
+            var userCountsByRole = await _context.UserRoles
+                .AsNoTracking()
+                .GroupBy(ur => ur.RoleId)
+                .Select(g => new { RoleId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.RoleId, x => x.Count, cancellationToken);
+
+            return roles.Select(role =>
             {
                 var roleName = role.Name ?? string.Empty;
-                var users = await _userManager.GetUsersInRoleAsync(roleName);
-                var isSystemRole = SystemRoles.Contains(roleName);
-
-                roleDtos.Add(new RoleDto
+                return new RoleDto
                 {
                     Id = role.Id,
                     Name = roleName,
-                    UserCount = users.Count,
-                    IsSystemRole = isSystemRole
-                });
-            }
-
-            return roleDtos;
+                    UserCount = userCountsByRole.GetValueOrDefault(role.Id, 0),
+                    IsSystemRole = SystemRoles.Contains(roleName)
+                };
+            }).ToList();
         }
 
         public async Task<RoleDto> CreateRoleAsync(string roleName, CancellationToken cancellationToken = default)

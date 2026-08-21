@@ -63,7 +63,8 @@ namespace LogisticsSystem.UnitTests.Identity
                 _refreshTokenRepoMock.Object,
                 _emailSenderMock.Object,
                 Options.Create(new EmailOptions()),
-                _currentUserServiceMock.Object);
+                _currentUserServiceMock.Object,
+                _dbContext);
         }
 
         public void Dispose()

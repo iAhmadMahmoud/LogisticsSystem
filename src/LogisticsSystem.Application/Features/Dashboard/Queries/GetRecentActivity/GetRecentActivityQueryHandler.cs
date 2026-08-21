@@ -18,9 +18,7 @@ namespace LogisticsSystem.Application.Features.Dashboard.Queries.GetRecentActivi
 
         public async Task<PagedResult<RecentActivityDto>> Handle(GetRecentActivityQuery request, CancellationToken cancellationToken)
         {
-            var query = _context.ShipmentStatusHistories
-                .Include(h => h.Shipment)
-                .AsNoTracking();
+            var query = _context.ShipmentStatusHistories.AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(request.ActivityType))
             {
@@ -54,17 +52,26 @@ namespace LogisticsSystem.Application.Features.Dashboard.Queries.GetRecentActivi
 
             var totalCount = await query.CountAsync(cancellationToken);
 
-            var historyItems = await query
+            var projectedItems = await query
                 .OrderByDescending(h => h.ChangedAt)
                 .Skip((request.PageNumber - 1) * request.PageSize)
                 .Take(request.PageSize)
+                .Select(h => new
+                {
+                    h.Id,
+                    h.Status,
+                    TrackingNumber = h.Shipment != null ? h.Shipment.TrackingNumber : string.Empty,
+                    h.ShipmentId,
+                    h.ChangedAt,
+                    h.ChangedByUserId
+                })
                 .ToListAsync(cancellationToken);
 
-            var dtos = historyItems.Select(h => new RecentActivityDto
+            var dtos = projectedItems.Select(h => new RecentActivityDto
             {
                 Id = h.Id,
                 ActivityType = FormatActivityType(h.Status),
-                Description = FormatDescription(h.Status, h.Shipment?.TrackingNumber ?? string.Empty),
+                Description = FormatDescription(h.Status, h.TrackingNumber),
                 EntityId = h.ShipmentId,
                 EntityType = "Shipment",
                 Timestamp = h.ChangedAt,
