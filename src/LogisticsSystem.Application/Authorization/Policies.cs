@@ -24,5 +24,9 @@ namespace LogisticsSystem.Application.Authorization
         public const string UserManage = Permissions.Users.Manage;
 
         public const string DashboardView = Permissions.Dashboard.View;
+        
+        public const string VehicleView = Permissions.Vehicles.View;
+        public const string VehicleViewAll = Permissions.Vehicles.ViewAll;
+        public const string VehicleManage = Permissions.Vehicles.Manage;
     }
 }

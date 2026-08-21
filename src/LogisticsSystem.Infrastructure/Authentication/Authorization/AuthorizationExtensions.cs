@@ -98,6 +98,11 @@ namespace LogisticsSystem.Infrastructure.Authentication.Authorization
                 // Users
 
                 options.AddPolicy(
+                    Policies.UserView,
+                    policy => policy.RequireRole(
+                        Roles.Admin));
+
+                options.AddPolicy(
                     Policies.UserManage,
                     policy => policy.RequireRole(
                         Roles.Admin));
@@ -106,6 +111,24 @@ namespace LogisticsSystem.Infrastructure.Authentication.Authorization
 
                 options.AddPolicy(
                     Policies.DashboardView,
+                    policy => policy.RequireRole(
+                        Roles.Dispatcher,
+                        Roles.Admin));
+
+                // Vehicles
+
+                options.AddPolicy(
+                    Policies.VehicleView,
+                    policy => policy.RequireAuthenticatedUser());
+
+                options.AddPolicy(
+                    Policies.VehicleViewAll,
+                    policy => policy.RequireRole(
+                        Roles.Dispatcher,
+                        Roles.Admin));
+
+                options.AddPolicy(
+                    Policies.VehicleManage,
                     policy => policy.RequireRole(
                         Roles.Dispatcher,
                         Roles.Admin));

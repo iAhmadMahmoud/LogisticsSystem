@@ -1,14 +1,19 @@
 using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Application.Common.Models;
 using LogisticsSystem.Application.Common.Models.Authentication;
+using LogisticsSystem.Application.Features.RoleManagement.DTOs;
+using LogisticsSystem.Application.Features.Users.DTOs;
 using LogisticsSystem.Application.Specifications;
 using LogisticsSystem.Domain.Constants;
 using LogisticsSystem.Domain.Entities;
+using LogisticsSystem.Domain.Exceptions;
 using LogisticsSystem.Infrastructure.Authentication.Email;
 using LogisticsSystem.Infrastructure.Authentication.Jwt;
 using LogisticsSystem.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Text;
 
@@ -27,9 +32,22 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             public const string UserAccountInactive = "User account is inactive.";
             public const string EmailAlreadyExists = "Email already exists.";
             public const string UsernameAlreadyExists = "Username already exists.";
+            public const string RoleNotFound = "Role not found.";
+            public const string RoleAlreadyExists = "Role already exists.";
+            public const string CannotDeleteSystemRole = "Cannot delete system roles.";
+            public const string CannotDeleteAssignedRole = "Cannot delete a role that is currently assigned to users.";
         }
 
+        private static readonly HashSet<string> SystemRoles = new(StringComparer.OrdinalIgnoreCase)
+        {
+            Roles.Admin,
+            Roles.Dispatcher,
+            Roles.Driver,
+            Roles.Customer
+        };
+
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<IdentityRole<Guid>> _roleManager;
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
         private readonly IGenericRepository<Customer> _customerRepository;
         private readonly IGenericRepository<RefreshToken> _refreshTokenRepository;
@@ -42,6 +60,7 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
         public IdentityService(
             UserManager<ApplicationUser> userManager,
+            RoleManager<IdentityRole<Guid>> roleManager,
             IJwtTokenGenerator jwtTokenGenerator,
             IUnitOfWork unitOfWork,
             IOptions<JwtOptions> jwtOptions,
@@ -53,6 +72,7 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             ICurrentUserService currentUserService)
         {
             _userManager = userManager;
+            _roleManager = roleManager;
             _jwtTokenGenerator = jwtTokenGenerator;
             _unitOfWork = unitOfWork;
             _jwtOptions = jwtOptions.Value;
@@ -453,6 +473,295 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             return refreshToken;
         }
 
-        
+        public async Task<PagedResult<UserDto>> GetUsersAsync(
+            int pageNumber,
+            int pageSize,
+            string? role,
+            bool? isActive,
+            string? searchTerm,
+            CancellationToken cancellationToken = default)
+        {
+            var query = _userManager.Users.AsNoTracking();
+
+            if (isActive.HasValue)
+            {
+                query = query.Where(u => u.IsActive == isActive.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var term = searchTerm.Trim().ToLower();
+                query = query.Where(u =>
+                    u.FirstName.ToLower().Contains(term) ||
+                    u.LastName.ToLower().Contains(term) ||
+                    (u.Email != null && u.Email.ToLower().Contains(term)) ||
+                    (u.UserName != null && u.UserName.ToLower().Contains(term)));
+            }
+
+            if (!string.IsNullOrWhiteSpace(role))
+            {
+                var usersInRole = await _userManager.GetUsersInRoleAsync(role);
+                var userIdsInRole = usersInRole.Select(u => u.Id).ToHashSet();
+                query = query.Where(u => userIdsInRole.Contains(u.Id));
+            }
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            var users = await query
+                .OrderByDescending(u => u.CreatedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+
+            var userDtos = new List<UserDto>();
+            foreach (var user in users)
+            {
+                var roles = await _userManager.GetRolesAsync(user);
+                userDtos.Add(new UserDto
+                {
+                    Id = user.Id,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    UserName = user.UserName ?? string.Empty,
+                    Email = user.Email ?? string.Empty,
+                    PhoneNumber = user.PhoneNumber,
+                    ProfileImageUrl = user.ProfileImageUrl,
+                    IsActive = user.IsActive,
+                    Roles = roles.ToList(),
+                    CreatedAt = user.CreatedAt,
+                    LastLoginAt = user.LastLoginAt
+                });
+            }
+
+            return new PagedResult<UserDto>
+            {
+                Items = userDtos,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
+        public async Task<UserDetailsDto?> GetUserDetailsByIdAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var user = await _userManager.Users
+                .AsNoTracking()
+                .Include(u => u.Customer)
+                .Include(u => u.Driver)
+                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+            if (user is null)
+                return null;
+
+            var roles = await _userManager.GetRolesAsync(user);
+
+            return new UserDetailsDto
+            {
+                Id = user.Id,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                UserName = user.UserName ?? string.Empty,
+                Email = user.Email ?? string.Empty,
+                PhoneNumber = user.PhoneNumber,
+                ProfileImageUrl = user.ProfileImageUrl,
+                IsActive = user.IsActive,
+                EmailConfirmed = user.EmailConfirmed,
+                Roles = roles.ToList(),
+                CreatedAt = user.CreatedAt,
+                LastLoginAt = user.LastLoginAt,
+                CustomerId = user.Customer?.Id,
+                DriverId = user.Driver?.Id
+            };
+        }
+
+        public async Task<UserDetailsDto> UpdateUserByAdminAsync(
+            Guid userId,
+            string firstName,
+            string lastName,
+            string? phoneNumber,
+            string email,
+            string userName,
+            CancellationToken cancellationToken = default)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user is null)
+            {
+                throw new KeyNotFoundException(ErrorMessages.UserNotFound);
+            }
+
+            var normalizedEmail = email.Trim();
+            var normalizedUserName = userName.Trim();
+
+            if (!string.Equals(user.Email, normalizedEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                var existingByEmail = await _userManager.FindByEmailAsync(normalizedEmail);
+                if (existingByEmail != null && existingByEmail.Id != user.Id)
+                {
+                    throw new InvalidOperationException(ErrorMessages.EmailAlreadyExists);
+                }
+            }
+
+            if (!string.Equals(user.UserName, normalizedUserName, StringComparison.OrdinalIgnoreCase))
+            {
+                var existingByName = await _userManager.FindByNameAsync(normalizedUserName);
+                if (existingByName != null && existingByName.Id != user.Id)
+                {
+                    throw new InvalidOperationException(ErrorMessages.UsernameAlreadyExists);
+                }
+            }
+
+            user.FirstName = firstName.Trim();
+            user.LastName = lastName.Trim();
+            user.PhoneNumber = phoneNumber?.Trim();
+            user.Email = normalizedEmail;
+            user.UserName = normalizedUserName;
+
+            var updateResult = await _userManager.UpdateAsync(user);
+            EnsureSucceeded(updateResult);
+
+            return (await GetUserDetailsByIdAsync(user.Id, cancellationToken))!;
+        }
+
+        public async Task SetUserStatusAsync(Guid userId, bool isActive, CancellationToken cancellationToken = default)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user is null)
+            {
+                throw new KeyNotFoundException(ErrorMessages.UserNotFound);
+            }
+
+            user.IsActive = isActive;
+
+            if (!isActive)
+            {
+                var tokens = await _refreshTokenRepository.ListAsync(
+                    new ActiveRefreshTokensByUserSpecification(user.Id));
+                foreach (var token in tokens)
+                {
+                    token.IsRevoked = true;
+                    token.RevokedAt = DateTime.UtcNow;
+                    _refreshTokenRepository.Update(token);
+                }
+            }
+
+            var result = await _userManager.UpdateAsync(user);
+            EnsureSucceeded(result);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        public async Task DeactivateOrDeleteUserAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            await SetUserStatusAsync(userId, false, cancellationToken);
+        }
+
+        public async Task<IReadOnlyList<RoleDto>> GetRolesAsync(CancellationToken cancellationToken = default)
+        {
+            var roles = await _roleManager.Roles.AsNoTracking().ToListAsync(cancellationToken);
+            var roleDtos = new List<RoleDto>();
+
+            foreach (var role in roles)
+            {
+                var roleName = role.Name ?? string.Empty;
+                var users = await _userManager.GetUsersInRoleAsync(roleName);
+                var isSystemRole = SystemRoles.Contains(roleName);
+
+                roleDtos.Add(new RoleDto
+                {
+                    Id = role.Id,
+                    Name = roleName,
+                    UserCount = users.Count,
+                    IsSystemRole = isSystemRole
+                });
+            }
+
+            return roleDtos;
+        }
+
+        public async Task<RoleDto> CreateRoleAsync(string roleName, CancellationToken cancellationToken = default)
+        {
+            var normalizedName = roleName.Trim();
+
+            if (await _roleManager.RoleExistsAsync(normalizedName))
+            {
+                throw new InvalidOperationException(ErrorMessages.RoleAlreadyExists);
+            }
+
+            var role = new IdentityRole<Guid>(normalizedName);
+            var result = await _roleManager.CreateAsync(role);
+            EnsureSucceeded(result);
+
+            return new RoleDto
+            {
+                Id = role.Id,
+                Name = role.Name!,
+                UserCount = 0,
+                IsSystemRole = SystemRoles.Contains(role.Name!)
+            };
+        }
+
+        public async Task DeleteRoleAsync(Guid roleId, CancellationToken cancellationToken = default)
+        {
+            var role = await _roleManager.FindByIdAsync(roleId.ToString());
+            if (role is null)
+            {
+                throw new KeyNotFoundException(ErrorMessages.RoleNotFound);
+            }
+
+            if (SystemRoles.Contains(role.Name!))
+            {
+                throw new DomainException(ErrorMessages.CannotDeleteSystemRole);
+            }
+
+            var users = await _userManager.GetUsersInRoleAsync(role.Name!);
+            if (users.Count > 0)
+            {
+                throw new DomainException(ErrorMessages.CannotDeleteAssignedRole);
+            }
+
+            var result = await _roleManager.DeleteAsync(role);
+            EnsureSucceeded(result);
+        }
+
+        public async Task AssignRoleToUserAsync(Guid userId, string roleName, CancellationToken cancellationToken = default)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user is null)
+            {
+                throw new KeyNotFoundException(ErrorMessages.UserNotFound);
+            }
+
+            var normalizedRole = roleName.Trim();
+            if (!await _roleManager.RoleExistsAsync(normalizedRole))
+            {
+                throw new KeyNotFoundException(ErrorMessages.RoleNotFound);
+            }
+
+            if (!await _userManager.IsInRoleAsync(user, normalizedRole))
+            {
+                var result = await _userManager.AddToRoleAsync(user, normalizedRole);
+                EnsureSucceeded(result);
+            }
+        }
+
+        public async Task RemoveRoleFromUserAsync(Guid userId, string roleName, CancellationToken cancellationToken = default)
+        {
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user is null)
+            {
+                throw new KeyNotFoundException(ErrorMessages.UserNotFound);
+            }
+
+            var normalizedRole = roleName.Trim();
+            if (!await _roleManager.RoleExistsAsync(normalizedRole))
+            {
+                throw new KeyNotFoundException(ErrorMessages.RoleNotFound);
+            }
+
+            if (await _userManager.IsInRoleAsync(user, normalizedRole))
+            {
+                var result = await _userManager.RemoveFromRoleAsync(user, normalizedRole);
+                EnsureSucceeded(result);
+            }
+        }
     }
 }
