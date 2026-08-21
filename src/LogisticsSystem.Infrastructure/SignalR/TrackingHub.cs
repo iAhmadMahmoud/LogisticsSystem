@@ -5,6 +5,7 @@ using LogisticsSystem.Domain.Constants;
 using LogisticsSystem.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 
 namespace LogisticsSystem.Infrastructure.SignalR
 {
@@ -13,11 +14,16 @@ namespace LogisticsSystem.Infrastructure.SignalR
     {
         private readonly IGenericRepository<Shipment> _shipmentRepository;
         private readonly ICurrentUserService _currentUserService;
+        private readonly ILogger<TrackingHub> _logger;
 
-        public TrackingHub(IGenericRepository<Shipment> shipmentRepository, ICurrentUserService currentUserService)
+        public TrackingHub(
+            IGenericRepository<Shipment> shipmentRepository,
+            ICurrentUserService currentUserService,
+            ILogger<TrackingHub> logger)
         {
             _shipmentRepository = shipmentRepository;
             _currentUserService = currentUserService;
+            _logger = logger;
         }
 
         public async Task SubscribeToShipment(Guid shipmentId)
@@ -63,13 +69,13 @@ namespace LogisticsSystem.Infrastructure.SignalR
 
         public override Task OnConnectedAsync()
         {
-            Console.WriteLine($"Tracking SignalR connected: {Context.UserIdentifier}");
+            _logger.LogInformation("Tracking SignalR client connected: {UserId}", Context.UserIdentifier);
             return base.OnConnectedAsync();
         }
 
         public override Task OnDisconnectedAsync(Exception? exception)
         {
-            Console.WriteLine($"Tracking SignalR disconnected: {Context.UserIdentifier}");
+            _logger.LogInformation("Tracking SignalR client disconnected: {UserId}", Context.UserIdentifier);
             return base.OnDisconnectedAsync(exception);
         }
     }
