@@ -1,4 +1,4 @@
-﻿using LogisticsSystem.Domain.Entities;
+using LogisticsSystem.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace LogisticsSystem.Application.Common.Interfaces.Persistence
@@ -20,6 +20,8 @@ namespace LogisticsSystem.Application.Common.Interfaces.Persistence
         DbSet<RefreshToken> RefreshTokens { get; }
 
         DbSet<DispatchAssignment> DispatchAssignments { get; }
+
+        DbSet<ShipmentStatusHistory> ShipmentStatusHistories { get; }
 
         Task<int> SaveChangesAsync(CancellationToken cancellationToken);
     }
