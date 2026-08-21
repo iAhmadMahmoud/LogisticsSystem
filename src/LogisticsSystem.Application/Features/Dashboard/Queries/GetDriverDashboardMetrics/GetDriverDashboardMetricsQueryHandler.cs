@@ -19,18 +19,23 @@ namespace LogisticsSystem.Application.Features.Dashboard.Queries.GetDriverDashbo
         {
             var query = _context.Drivers.AsNoTracking();
 
-            var totalDrivers = await query.CountAsync(cancellationToken);
-            var availableDrivers = await query.CountAsync(d => d.Status == DriverStatus.Available, cancellationToken);
-            var busyDrivers = await query.CountAsync(d => d.Status == DriverStatus.Busy, cancellationToken);
-            var offlineDrivers = await query.CountAsync(d => d.Status == DriverStatus.Offline, cancellationToken);
-            var onBreakDrivers = await query.CountAsync(d => d.Status == DriverStatus.OnBreak, cancellationToken);
-            var suspendedDrivers = await query.CountAsync(d => d.Status == DriverStatus.Suspended, cancellationToken);
+            var statusCounts = await query
+                .GroupBy(d => d.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
+
+            var totalDrivers = statusCounts.Values.Sum();
+            var availableDrivers = statusCounts.GetValueOrDefault(DriverStatus.Available, 0);
+            var busyDrivers = statusCounts.GetValueOrDefault(DriverStatus.Busy, 0);
+            var offlineDrivers = statusCounts.GetValueOrDefault(DriverStatus.Offline, 0);
+            var onBreakDrivers = statusCounts.GetValueOrDefault(DriverStatus.OnBreak, 0);
+            var suspendedDrivers = statusCounts.GetValueOrDefault(DriverStatus.Suspended, 0);
 
             var withVehicles = await query.CountAsync(d => d.VehicleId != null, cancellationToken);
-            var withoutVehicles = await query.CountAsync(d => d.VehicleId == null, cancellationToken);
+            var withoutVehicles = totalDrivers - withVehicles;
 
-            var activeDrivers = await query.CountAsync(d => d.Status != DriverStatus.Suspended, cancellationToken);
-            var inactiveDrivers = await query.CountAsync(d => d.Status == DriverStatus.Suspended, cancellationToken);
+            var activeDrivers = totalDrivers - suspendedDrivers;
+            var inactiveDrivers = suspendedDrivers;
 
             return new DriverDashboardMetricsDto
             {

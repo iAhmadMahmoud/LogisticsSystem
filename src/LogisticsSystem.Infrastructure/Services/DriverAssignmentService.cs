@@ -1,4 +1,4 @@
-﻿using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Application.Features.Drivers.Specifications;
 using LogisticsSystem.Domain.Entities;
@@ -30,22 +30,20 @@ namespace LogisticsSystem.Infrastructure.Services
                 new AvailableDriversSpecification(),
                 cancellationToken);
 
-            // 2. Get drivers who already rejected this shipment
-            var rejectedDriverIds = await _assignmentRepository
+            // 2. Get drivers who already received an assignment for this shipment
+            var assignedDriverIds = await _assignmentRepository
                 .AsQueryable()
-                .Where(x =>
-                    x.ShipmentId == shipment.Id &&
-                    x.Status == AssignmentStatus.Rejected)
+                .Where(x => x.ShipmentId == shipment.Id)
                 .Select(x => x.DriverId)
                 .Distinct()
                 .ToListAsync(cancellationToken);
 
-            // 3. Remove drivers who already rejected this shipment
+            // 3. Remove drivers who already have an assignment for this shipment
             var candidates = drivers
                 .Where(d =>
                     d.Latitude.HasValue &&
                     d.Longitude.HasValue &&
-                    !rejectedDriverIds.Contains(d.Id))
+                    !assignedDriverIds.Contains(d.Id))
                 .Select(d => new
                 {
                     Driver = d,

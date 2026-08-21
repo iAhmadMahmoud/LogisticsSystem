@@ -22,14 +22,19 @@ namespace LogisticsSystem.Application.Features.Dashboard.Queries.GetShipmentDash
 
             var query = _context.Shipments.AsNoTracking();
 
-            var totalShipments = await query.CountAsync(cancellationToken);
-            var pendingShipments = await query.CountAsync(s => s.Status == ShipmentStatus.Pending, cancellationToken);
-            var assignedShipments = await query.CountAsync(s => s.Status == ShipmentStatus.Assigned, cancellationToken);
-            var pickedUpShipments = await query.CountAsync(s => s.Status == ShipmentStatus.PickedUp, cancellationToken);
-            var inTransitShipments = await query.CountAsync(s => s.Status == ShipmentStatus.InTransit, cancellationToken);
-            var deliveredShipments = await query.CountAsync(s => s.Status == ShipmentStatus.Delivered, cancellationToken);
-            var cancelledShipments = await query.CountAsync(s => s.Status == ShipmentStatus.Cancelled, cancellationToken);
-            var failedShipments = await query.CountAsync(s => s.Status == ShipmentStatus.Failed, cancellationToken);
+            var statusCounts = await query
+                .GroupBy(s => s.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
+
+            var totalShipments = statusCounts.Values.Sum();
+            var pendingShipments = statusCounts.GetValueOrDefault(ShipmentStatus.Pending, 0);
+            var assignedShipments = statusCounts.GetValueOrDefault(ShipmentStatus.Assigned, 0);
+            var pickedUpShipments = statusCounts.GetValueOrDefault(ShipmentStatus.PickedUp, 0);
+            var inTransitShipments = statusCounts.GetValueOrDefault(ShipmentStatus.InTransit, 0);
+            var deliveredShipments = statusCounts.GetValueOrDefault(ShipmentStatus.Delivered, 0);
+            var cancelledShipments = statusCounts.GetValueOrDefault(ShipmentStatus.Cancelled, 0);
+            var failedShipments = statusCounts.GetValueOrDefault(ShipmentStatus.Failed, 0);
 
             var createdToday = await query.CountAsync(s => s.CreatedAt >= todayUtc && s.CreatedAt < tomorrowUtc, cancellationToken);
             var deliveredToday = await query.CountAsync(s => s.DeliveredAt.HasValue && s.DeliveredAt.Value >= todayUtc && s.DeliveredAt.Value < tomorrowUtc, cancellationToken);

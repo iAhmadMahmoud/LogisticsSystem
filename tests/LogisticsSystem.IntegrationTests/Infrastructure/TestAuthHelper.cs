@@ -106,7 +106,9 @@ namespace LogisticsSystem.IntegrationTests.Infrastructure
             Guid customerId,
             Guid? driverId = null,
             ShipmentStatus status = ShipmentStatus.InTransit,
-            string trackingNumber = "TRK-TEST-001")
+            string trackingNumber = "TRK-TEST-001",
+            double pickupLatitude = 30.0,
+            double pickupLongitude = 31.0)
         {
             using var scope = services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -118,7 +120,11 @@ namespace LogisticsSystem.IntegrationTests.Infrastructure
                 DriverId = driverId,
                 TrackingNumber = trackingNumber,
                 PickupAddress = "Pickup Location",
+                PickupLatitude = pickupLatitude,
+                PickupLongitude = pickupLongitude,
                 DeliveryAddress = "Delivery Location",
+                DeliveryLatitude = 30.1,
+                DeliveryLongitude = 31.1,
                 Weight = 10,
                 DistanceKm = 5,
                 ShippingCost = 50,
@@ -139,7 +145,9 @@ namespace LogisticsSystem.IntegrationTests.Infrastructure
             string lastName = "Driver",
             string email = "driver@test.com",
             string licenseNumber = "DL-TEST-12345",
-            DriverStatus status = DriverStatus.Available)
+            DriverStatus status = DriverStatus.Available,
+            double latitude = 30.0,
+            double longitude = 31.0)
         {
             using var scope = services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -164,7 +172,9 @@ namespace LogisticsSystem.IntegrationTests.Infrastructure
                 Id = Guid.NewGuid(),
                 UserId = user.Id,
                 LicenseNumber = licenseNumber,
-                Status = status
+                Status = status,
+                Latitude = latitude,
+                Longitude = longitude
             };
 
             db.Users.Add(user);

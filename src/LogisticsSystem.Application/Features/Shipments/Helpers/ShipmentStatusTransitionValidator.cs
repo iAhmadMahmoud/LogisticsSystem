@@ -1,9 +1,11 @@
-﻿using LogisticsSystem.Domain.Enums;
+using LogisticsSystem.Domain.Enums;
 
 namespace LogisticsSystem.Application.Features.Shipments.Helpers
 {
     public static class ShipmentStatusTransitionValidator
     {
+        public static readonly SemaphoreSlim StateMutationLock = new(1, 1);
+
         public static bool CanTransition(ShipmentStatus current,ShipmentStatus next)
         {
             return (current, next) switch

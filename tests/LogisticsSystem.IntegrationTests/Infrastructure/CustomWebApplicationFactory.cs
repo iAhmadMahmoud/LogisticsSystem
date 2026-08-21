@@ -54,7 +54,23 @@ namespace LogisticsSystem.IntegrationTests.Infrastructure
                         options.AddInterceptors(interceptor);
                     }
                 });
+
+                // Mock IShipmentAssignmentScheduler to avoid Hangfire dependency in tests
+                var schedulerDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(LogisticsSystem.Application.Common.Interfaces.Services.IShipmentAssignmentScheduler));
+                if (schedulerDescriptor != null)
+                {
+                    services.Remove(schedulerDescriptor);
+                }
+                services.AddScoped<LogisticsSystem.Application.Common.Interfaces.Services.IShipmentAssignmentScheduler, FakeShipmentAssignmentScheduler>();
             });
+        }
+    }
+
+    public class FakeShipmentAssignmentScheduler : LogisticsSystem.Application.Common.Interfaces.Services.IShipmentAssignmentScheduler
+    {
+        public void Schedule(Guid shipmentId)
+        {
+            // No-op for integration testing
         }
     }
 }
