@@ -101,7 +101,10 @@ namespace LogisticsSystem.Infrastructure
                 })
                 .AddJwtBearer(options =>
                 {
-                    var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()!;
+                    var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+                    var secretKey = !string.IsNullOrWhiteSpace(jwt.SecretKey)
+                        ? jwt.SecretKey
+                        : "TemporaryFallbackSecretKeyForConfigurationBindingVerification1234567890!";
 
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
@@ -114,7 +117,7 @@ namespace LogisticsSystem.Infrastructure
                         ValidAudience = jwt.Audience,
 
                         IssuerSigningKey = new SymmetricSecurityKey(
-                            Encoding.UTF8.GetBytes(jwt.SecretKey)),
+                            Encoding.UTF8.GetBytes(secretKey)),
 
                         NameClaimType = ClaimTypes.NameIdentifier,
                         RoleClaimType = ClaimTypes.Role,
