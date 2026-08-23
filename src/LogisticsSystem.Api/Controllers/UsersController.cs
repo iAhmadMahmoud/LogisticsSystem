@@ -1,3 +1,4 @@
+using LogisticsSystem.Api.Common.Extensions;
 using LogisticsSystem.Api.Contracts.Users;
 using LogisticsSystem.Application.Authorization;
 using LogisticsSystem.Application.Common.Models;
@@ -10,11 +11,13 @@ using LogisticsSystem.Application.Features.Users.Queries.GetUsers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LogisticsSystem.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [EnableRateLimiting(RateLimiterPolicies.Admin)]
     public class UsersController : ControllerBase
     {
         private readonly ISender _sender;

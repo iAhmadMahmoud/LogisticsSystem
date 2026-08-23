@@ -1,3 +1,4 @@
+using LogisticsSystem.Api.Common.Extensions;
 using LogisticsSystem.Api.Contracts.Shipments;
 using LogisticsSystem.Application.Authorization;
 using LogisticsSystem.Application.Common.Models;
@@ -23,6 +24,7 @@ using LogisticsSystem.Domain.Constants;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LogisticsSystem.Api.Controllers
 {
@@ -153,6 +155,7 @@ namespace LogisticsSystem.Api.Controllers
 
 
         [Authorize(Policy = Policies.DriverUpdateStatus)]
+        [EnableRateLimiting(RateLimiterPolicies.Tracking)]
         [HttpPost("{shipmentId:guid}/location")]
         public async Task<IActionResult> AddLocation(Guid shipmentId, AddShipmentLocationRequest request, CancellationToken cancellationToken)
         {
@@ -164,6 +167,7 @@ namespace LogisticsSystem.Api.Controllers
         }
 
         [Authorize(Policy = Policies.ShipmentView)]
+        [EnableRateLimiting(RateLimiterPolicies.Tracking)]
         [HttpGet("{shipmentId:guid}/tracking")]
         public async Task<IActionResult> GetTracking(
             Guid shipmentId,
@@ -184,6 +188,7 @@ namespace LogisticsSystem.Api.Controllers
 
         [HttpGet("{shipmentId:guid}/location/latest")]
         [Authorize(Policy = Policies.ShipmentView)]
+        [EnableRateLimiting(RateLimiterPolicies.Tracking)]
         public async Task<ActionResult<ShipmentTrackingDto>> GetLatestLocation(
             Guid shipmentId,
             CancellationToken cancellationToken)

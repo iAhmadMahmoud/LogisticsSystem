@@ -1,3 +1,4 @@
+using LogisticsSystem.Api.Common.Extensions;
 using LogisticsSystem.Application.Authentication.Commands.ChangePassword;
 using LogisticsSystem.Application.Authentication.Commands.ConfirmEmail;
 using LogisticsSystem.Application.Authentication.Commands.ForgotPassword;
@@ -12,11 +13,13 @@ using LogisticsSystem.Application.Features.Shipments.Commands.StartTransit;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LogisticsSystem.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [EnableRateLimiting(RateLimiterPolicies.Auth)]
     public class AuthController : ControllerBase
     {
         private readonly ISender _sender;

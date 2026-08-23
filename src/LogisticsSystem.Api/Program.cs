@@ -62,6 +62,7 @@ public class Program
 
         builder.Services.AddApplication();
         builder.Services.AddInfrastructure(builder.Configuration);
+        builder.Services.AddCustomRateLimiting(builder.Configuration);
 
         builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
@@ -92,6 +93,8 @@ public class Program
         app.UseHttpsRedirection();
 
         app.UseExceptionHandler();
+
+        app.UseRateLimiter();
 
         app.UseAuthentication();
 
