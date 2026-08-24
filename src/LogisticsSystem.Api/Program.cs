@@ -62,6 +62,7 @@ public class Program
 
         builder.Services.AddApplication();
         builder.Services.AddInfrastructure(builder.Configuration);
+        builder.Services.AddCustomCors(builder.Configuration, builder.Environment);
         builder.Services.AddCustomRateLimiting(builder.Configuration);
 
         builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -93,6 +94,8 @@ public class Program
         app.UseHttpsRedirection();
 
         app.UseExceptionHandler();
+
+        app.UseCors(CorsPolicies.Default);
 
         app.UseRateLimiter();
 
