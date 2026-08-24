@@ -1,4 +1,7 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
+using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using LogisticsSystem.Application.Common.Interfaces.Authentication;
@@ -10,6 +13,7 @@ using LogisticsSystem.Infrastructure.Identity;
 using LogisticsSystem.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 
 namespace LogisticsSystem.IntegrationTests.Infrastructure
 {
@@ -51,6 +55,48 @@ namespace LogisticsSystem.IntegrationTests.Infrastructure
                 Roles = new List<string> { role }
             };
             return await tokenGenerator.GenerateAccessTokenAsync(jwtUser);
+        }
+
+        public static string GenerateExpiredJwtToken(Guid userId, string email = "test@logistics.com", string role = Roles.Customer)
+        {
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("TestSuperSecretKeyForIntegrationTests1234567890!"));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var claims = new List<Claim>
+            {
+                new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+                new(JwtRegisteredClaimNames.Email, email),
+                new(ClaimTypes.Role, role)
+            };
+            var token = new JwtSecurityToken(
+                issuer: "LogisticsSystem",
+                audience: "LogisticsSystemUsers",
+                claims: claims,
+                notBefore: DateTime.UtcNow.AddHours(-2),
+                expires: DateTime.UtcNow.AddHours(-1),
+                signingCredentials: credentials);
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        public static string GenerateForgedJwtToken(Guid userId, string email = "test@logistics.com", string role = Roles.Customer)
+        {
+            var untrustedKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("UntrustedForgedKeyWithDifferentSignature1234567890!"));
+            var credentials = new SigningCredentials(untrustedKey, SecurityAlgorithms.HmacSha256);
+            var claims = new List<Claim>
+            {
+                new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+                new(JwtRegisteredClaimNames.Email, email),
+                new(ClaimTypes.Role, role)
+            };
+            var token = new JwtSecurityToken(
+                issuer: "LogisticsSystem",
+                audience: "LogisticsSystemUsers",
+                claims: claims,
+                notBefore: DateTime.UtcNow,
+                expires: DateTime.UtcNow.AddHours(1),
+                signingCredentials: credentials);
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
         public static HttpClient CreateAuthenticatedClient(

@@ -176,6 +176,105 @@ namespace LogisticsSystem.IntegrationTests.Hubs
             await connection.StopAsync();
         }
 
+        [Fact]
+        public async Task Connect_WithExpiredToken_FailsOrThrows()
+        {
+            // Arrange
+            var (user, _) = await TestAuthHelper.SeedCustomerAsync(_factory.Services, email: $"expired_{Guid.NewGuid()}@test.com");
+            var expiredToken = TestAuthHelper.GenerateExpiredJwtToken(user.Id, user.Email!, Roles.Customer);
+
+            await using var connection = CreateHubConnection(expiredToken);
+
+            // Act
+            var act = async () => await connection.StartAsync();
+
+            // Assert
+            await act.Should().ThrowAsync<Exception>();
+        }
+
+        [Fact]
+        public async Task Connect_WithForgedToken_FailsOrThrows()
+        {
+            // Arrange
+            var (user, _) = await TestAuthHelper.SeedCustomerAsync(_factory.Services, email: $"forged_{Guid.NewGuid()}@test.com");
+            var forgedToken = TestAuthHelper.GenerateForgedJwtToken(user.Id, user.Email!, Roles.Customer);
+
+            await using var connection = CreateHubConnection(forgedToken);
+
+            // Act
+            var act = async () => await connection.StartAsync();
+
+            // Assert
+            await act.Should().ThrowAsync<Exception>();
+        }
+
+        [Fact]
+        public async Task SubscribeToShipment_WhenDispatcherOrAdmin_Succeeds()
+        {
+            // Arrange
+            var (_, customer) = await TestAuthHelper.SeedCustomerAsync(_factory.Services, email: $"cust_sub_{Guid.NewGuid()}@test.com");
+            var (dispUser, _) = await TestAuthHelper.SeedCustomerAsync(_factory.Services, email: $"disp_sub_{Guid.NewGuid()}@test.com");
+            var shipment = await TestAuthHelper.SeedShipmentAsync(_factory.Services, customer.Id);
+
+            var dispToken = await TestAuthHelper.GenerateJwtTokenAsync(_factory.Services, dispUser.Id, role: Roles.Dispatcher);
+
+            await using var connection = CreateHubConnection(dispToken);
+            await connection.StartAsync();
+
+            // Act - Dispatcher subscribes to customer's shipment
+            var act = async () => await connection.InvokeAsync("SubscribeToShipment", shipment.Id);
+
+            // Assert
+            await act.Should().NotThrowAsync();
+
+            await connection.StopAsync();
+        }
+
+        [Fact]
+        public async Task LocationUpdated_WhenBroadcasted_NotReceivedByUnsubscribedClient()
+        {
+            // Arrange
+            var (userA, customerA) = await TestAuthHelper.SeedCustomerAsync(_factory.Services, email: $"userA_{Guid.NewGuid()}@test.com");
+            var (userB, customerB) = await TestAuthHelper.SeedCustomerAsync(_factory.Services, email: $"userB_{Guid.NewGuid()}@test.com");
+
+            var driverId = Guid.NewGuid();
+            var shipmentA = await TestAuthHelper.SeedShipmentAsync(_factory.Services, customerA.Id, driverId);
+            var shipmentB = await TestAuthHelper.SeedShipmentAsync(_factory.Services, customerB.Id, driverId);
+
+            var tokenA = await TestAuthHelper.GenerateJwtTokenAsync(_factory.Services, userA.Id, role: Roles.Customer);
+            var tokenB = await TestAuthHelper.GenerateJwtTokenAsync(_factory.Services, userB.Id, role: Roles.Customer);
+
+            await using var connA = CreateHubConnection(tokenA);
+            await using var connB = CreateHubConnection(tokenB);
+
+            var tcsA = new TaskCompletionSource<LocationUpdatedDto>();
+            var receivedByB = false;
+
+            connA.On<LocationUpdatedDto>("LocationUpdated", payload => tcsA.TrySetResult(payload));
+            connB.On<LocationUpdatedDto>("LocationUpdated", _ => receivedByB = true);
+
+            await connA.StartAsync();
+            await connB.StartAsync();
+
+            // Only user A subscribes to Shipment A
+            await connA.InvokeAsync("SubscribeToShipment", shipmentA.Id);
+
+            // Act - Broadcast location update for Shipment A
+            using var scope = _factory.Services.CreateScope();
+            var realtimeService = scope.ServiceProvider.GetRequiredService<ITrackingRealtimeService>();
+            await realtimeService.LocationUpdatedAsync(shipmentA.Id, driverId, 29.987, 31.123, DateTime.UtcNow);
+
+            // Assert
+            var resultA = await tcsA.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            resultA.ShipmentId.Should().Be(shipmentA.Id);
+
+            await Task.Delay(200);
+            receivedByB.Should().BeFalse();
+
+            await connA.StopAsync();
+            await connB.StopAsync();
+        }
+
         private sealed record LocationUpdatedDto(Guid ShipmentId, Guid DriverId, double Latitude, double Longitude, DateTime RecordedAt);
         private sealed record ShipmentStatusChangedDto(Guid ShipmentId, string Status, DateTime ChangedAt, string? Notes);
     }
