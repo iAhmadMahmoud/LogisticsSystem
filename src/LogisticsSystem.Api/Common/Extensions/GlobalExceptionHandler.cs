@@ -29,6 +29,10 @@ namespace LogisticsSystem.Api.Common.Extensions
                 Instance = httpContext.Request.Path
             };
 
+            var correlationId = httpContext.Items["CorrelationId"]?.ToString()
+                ?? httpContext.TraceIdentifier;
+            problemDetails.Extensions["correlationId"] = correlationId;
+
             switch (exception)
             {
                 case ValidationException validationException:

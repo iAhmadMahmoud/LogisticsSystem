@@ -22,11 +22,16 @@ public class Program
                 .ReadFrom.Configuration(context.Configuration)
                 .ReadFrom.Services(services)
                 .Enrich.FromLogContext()
-                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .Enrich.WithProperty("Application", "LogisticsSystem.Api")
+                .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName)
+                .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] ({CorrelationId}) {Message:lj}{NewLine}{Exception}")
                 .WriteTo.File(
                     path: "logs/log-.txt",
                     rollingInterval: RollingInterval.Day,
-                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}");
+                    fileSizeLimitBytes: 10 * 1024 * 1024,
+                    retainedFileCountLimit: 14,
+                    rollOnFileSizeLimit: true,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({SourceContext}) [{CorrelationId}] {Message:lj}{NewLine}{Exception}");
         });
 
         builder.Services.AddControllers()
@@ -71,6 +76,8 @@ public class Program
         builder.Services.AddProblemDetails();
 
         var app = builder.Build();
+
+        app.UseMiddleware<LogisticsSystem.Api.Common.Middleware.CorrelationIdMiddleware>();
 
         app.UseSerilogRequestLogging();
 

@@ -15,6 +15,7 @@ using LogisticsSystem.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Text;
 
@@ -59,6 +60,7 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
         private readonly EmailOptions _emailOptions;
         private readonly ICurrentUserService _currentUserService;
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<IdentityService> _logger;
 
         public IdentityService(
             UserManager<ApplicationUser> userManager,
@@ -72,7 +74,8 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             IEmailSender emailSender,
             IOptions<EmailOptions> emailOptions,
             ICurrentUserService currentUserService,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            ILogger<IdentityService> logger)
         {
             _userManager = userManager;
             _roleManager = roleManager;
@@ -86,6 +89,7 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             _emailOptions = emailOptions.Value;
             _currentUserService = currentUserService;
             _context = context;
+            _logger = logger;
         }
 
         public async Task ChangePasswordAsync(ChangePasswordRequest request)
@@ -202,6 +206,7 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
             if (!passwordValid)
             {
+                _logger.LogWarning("Security: Failed login attempt for '{Email}'.", request.Email);
                 throw new UnauthorizedAccessException(ErrorMessages.InvalidEmailOrPassword);
             }
 
@@ -210,6 +215,8 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             var updateResult = await _userManager.UpdateAsync(user);
 
             EnsureSucceeded(updateResult);
+
+            _logger.LogInformation("Security: User {UserId} ({Email}) logged in successfully.", user.Id, user.Email);
 
             return await CreateAuthenticationResultAsync(user);
         }
@@ -227,6 +234,8 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             _refreshTokenRepository.Update(storedToken);
 
             await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Security: Refresh token revoked for user {UserId}.", storedToken.UserId);
         }
 
         public async Task<AuthenticationResult> RefreshTokenAsync(string refreshToken)
@@ -235,6 +244,7 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
             if (!storedToken.IsActive)
             {
+                _logger.LogWarning("Security: Inactive refresh token rejected for user {UserId}.", storedToken.UserId);
                 throw new UnauthorizedAccessException(ErrorMessages.RefreshTokenNoLongerValid);
             }
 
@@ -247,6 +257,7 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
             if (!user.IsActive)
             {
+                _logger.LogWarning("Security: Inactive user {UserId} attempted token refresh.", user.Id);
                 throw new UnauthorizedAccessException(ErrorMessages.UserAccountInactive);
             }
 
@@ -261,6 +272,8 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             await _refreshTokenRepository.AddAsync(newRefreshToken);
 
             await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Security: Refresh token rotated for user {UserId}.", user.Id);
 
             return await CreateAuthenticationResultAsync(user, newRefreshToken);
         }
@@ -314,6 +327,8 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
             var confirmationUrl = BuildCallbackUrl(_emailOptions.ConfirmationUrl, user.Id, confirmationToken);
 
             await SendConfirmationEmailAsync(user.Email!, confirmationUrl);
+
+            _logger.LogInformation("Security: New customer account {UserId} registered with email '{Email}'.", user.Id, user.Email);
 
             return await CreateAuthenticationResultAsync(user);
         }
