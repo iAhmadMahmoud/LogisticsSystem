@@ -21,7 +21,7 @@ namespace LogisticsSystem.IntegrationTests.Infrastructure
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["ConnectionStrings:LogisticsSystem"] = "Server=(localdb)\\mssqllocaldb;Database=LogisticsSystem_Test;Trusted_Connection=True;MultipleActiveResultSets=true",
+                    ["ConnectionStrings:LogisticsSystem"] = "Server=127.0.0.1,1433;Database=LogisticsSystem_Test;User Id=sa;Password=TestPassword123!;TrustServerCertificate=True;Encrypt=False;",
                     ["Jwt:SecretKey"] = "TestSuperSecretKeyForIntegrationTests1234567890!",
                     ["Jwt:Issuer"] = "LogisticsSystem",
                     ["Jwt:Audience"] = "LogisticsSystemUsers",
@@ -32,6 +32,13 @@ namespace LogisticsSystem.IntegrationTests.Infrastructure
 
             builder.ConfigureServices(services =>
             {
+                // Remove all background IHostedService registrations (e.g. Hangfire background server) during testing
+                var hostedServices = services.Where(d => d.ServiceType == typeof(Microsoft.Extensions.Hosting.IHostedService)).ToList();
+                foreach (var hs in hostedServices)
+                {
+                    services.Remove(hs);
+                }
+
                 // Remove existing ApplicationDbContext and DbContextOptions registrations
                 var descriptors = services.Where(d =>
                     d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>) ||

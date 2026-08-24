@@ -31,6 +31,7 @@ public class Program
                     fileSizeLimitBytes: 10 * 1024 * 1024,
                     retainedFileCountLimit: 14,
                     rollOnFileSizeLimit: true,
+                    shared: true,
                     outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({SourceContext}) [{CorrelationId}] {Message:lj}{NewLine}{Exception}");
         });
 

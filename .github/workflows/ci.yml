@@ -33,20 +33,12 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       - name: Run Unit Tests
-        run: >
-          dotnet test tests/LogisticsSystem.UnitTests/LogisticsSystem.UnitTests.csproj
-          --configuration Release
-          --no-build
-          --logger "trx;LogFileName=unit_tests.trx"
-          --results-directory ./TestResults
+        run: |
+          dotnet test tests/LogisticsSystem.UnitTests/LogisticsSystem.UnitTests.csproj --configuration Release --no-build --logger "trx;LogFileName=unit_tests.trx" --results-directory ./TestResults
 
       - name: Run Integration Tests
-        run: >
-          dotnet test tests/LogisticsSystem.IntegrationTests/LogisticsSystem.IntegrationTests.csproj
-          --configuration Release
-          --no-build
-          --logger "trx;LogFileName=integration_tests.trx"
-          --results-directory ./TestResults
+        run: |
+          dotnet test tests/LogisticsSystem.IntegrationTests/LogisticsSystem.IntegrationTests.csproj --configuration Release --no-build --logger "trx;LogFileName=integration_tests.trx" --results-directory ./TestResults
 
       - name: Upload Test Results Artifacts
         uses: actions/upload-artifact@v4
