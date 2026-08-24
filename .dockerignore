@@ -1,0 +1,39 @@
+# Git & Source Control
+.git
+.gitignore
+.gitattributes
+
+# IDE & Editor files
+.vs
+.idea
+.vscode
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build artifacts & packages
+bin/
+obj/
+publish/
+out/
+TestResults/
+artifacts/
+
+# Local configuration & secrets
+*.local.json
+.env
+.env.*
+secrets.json
+*.pem
+*.key
+*.crt
+*.cer
+
+# Antigravity IDE and Documentation
+.gemini/
+*.md
+
+# OS files
+.DS_Store
+Thumbs.db

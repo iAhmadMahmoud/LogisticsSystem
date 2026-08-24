@@ -188,6 +188,9 @@ namespace LogisticsSystem.Infrastructure
 
             services.AddScoped<AuditSaveChangesInterceptor>();
 
+            services.AddHealthChecks()
+                .AddCheck<LogisticsSystem.Infrastructure.Persistence.Health.DatabaseHealthCheck>("database");
+
             return services;
         }
     }
