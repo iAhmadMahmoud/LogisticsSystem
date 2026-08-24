@@ -112,7 +112,22 @@ public class Program
 
         app.MapControllers();
 
-        app.MapHealthChecks("/health");
+        app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        {
+            ResponseWriter = LogisticsSystem.Api.Common.Health.HealthCheckResponseWriter.WriteDetailedResponse
+        });
+
+        app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("live"),
+            ResponseWriter = LogisticsSystem.Api.Common.Health.HealthCheckResponseWriter.WriteMinimalResponse
+        });
+
+        app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("ready"),
+            ResponseWriter = LogisticsSystem.Api.Common.Health.HealthCheckResponseWriter.WriteDetailedResponse
+        });
 
         app.MapHub<NotificationHub>("/hubs/notifications");
         app.MapHub<TrackingHub>("/hubs/tracking");

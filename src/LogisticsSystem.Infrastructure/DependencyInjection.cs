@@ -189,7 +189,10 @@ namespace LogisticsSystem.Infrastructure
             services.AddScoped<AuditSaveChangesInterceptor>();
 
             services.AddHealthChecks()
-                .AddCheck<LogisticsSystem.Infrastructure.Persistence.Health.DatabaseHealthCheck>("database");
+                .AddCheck<LogisticsSystem.Infrastructure.Persistence.Health.DatabaseHealthCheck>("database", tags: ["ready", "db"])
+                .AddCheck<LogisticsSystem.Infrastructure.Persistence.Health.HangfireHealthCheck>("hangfire", tags: ["ready", "background"])
+                .AddCheck<LogisticsSystem.Infrastructure.Persistence.Health.EmailHealthCheck>("email", tags: ["ready", "email"])
+                .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy("API process is responsive."), tags: ["live"]);
 
             return services;
         }
