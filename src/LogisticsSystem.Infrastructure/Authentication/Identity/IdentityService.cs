@@ -504,9 +504,9 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
             if (!string.IsNullOrWhiteSpace(role))
             {
-                var usersInRole = await _userManager.GetUsersInRoleAsync(role);
-                var userIdsInRole = usersInRole.Select(u => u.Id).ToHashSet();
-                query = query.Where(u => userIdsInRole.Contains(u.Id));
+                var roleNormalized = role.ToUpper();
+                query = query.Where(u => _context.UserRoles
+                    .Any(ur => ur.UserId == u.Id && _context.Roles.Any(r => r.Id == ur.RoleId && r.NormalizedName == roleNormalized)));
             }
 
             var totalCount = await query.CountAsync(cancellationToken);

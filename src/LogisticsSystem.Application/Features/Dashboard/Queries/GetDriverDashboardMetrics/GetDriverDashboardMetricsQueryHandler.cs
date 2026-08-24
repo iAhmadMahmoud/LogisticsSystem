@@ -17,35 +17,39 @@ namespace LogisticsSystem.Application.Features.Dashboard.Queries.GetDriverDashbo
 
         public async Task<DriverDashboardMetricsDto> Handle(GetDriverDashboardMetricsQuery request, CancellationToken cancellationToken)
         {
-            var query = _context.Drivers.AsNoTracking();
+            var metrics = await _context.Drivers
+                .AsNoTracking()
+                .GroupBy(_ => 1)
+                .Select(g => new
+                {
+                    TotalDrivers = g.Count(),
+                    AvailableDrivers = g.Count(d => d.Status == DriverStatus.Available),
+                    BusyDrivers = g.Count(d => d.Status == DriverStatus.Busy),
+                    OfflineDrivers = g.Count(d => d.Status == DriverStatus.Offline),
+                    OnBreakDrivers = g.Count(d => d.Status == DriverStatus.OnBreak),
+                    SuspendedDrivers = g.Count(d => d.Status == DriverStatus.Suspended),
+                    DriversWithVehicles = g.Count(d => d.VehicleId != null)
+                })
+                .FirstOrDefaultAsync(cancellationToken);
 
-            var statusCounts = await query
-                .GroupBy(d => d.Status)
-                .Select(g => new { Status = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
+            if (metrics is null)
+            {
+                return new DriverDashboardMetricsDto();
+            }
 
-            var totalDrivers = statusCounts.Values.Sum();
-            var availableDrivers = statusCounts.GetValueOrDefault(DriverStatus.Available, 0);
-            var busyDrivers = statusCounts.GetValueOrDefault(DriverStatus.Busy, 0);
-            var offlineDrivers = statusCounts.GetValueOrDefault(DriverStatus.Offline, 0);
-            var onBreakDrivers = statusCounts.GetValueOrDefault(DriverStatus.OnBreak, 0);
-            var suspendedDrivers = statusCounts.GetValueOrDefault(DriverStatus.Suspended, 0);
-
-            var withVehicles = await query.CountAsync(d => d.VehicleId != null, cancellationToken);
-            var withoutVehicles = totalDrivers - withVehicles;
-
-            var activeDrivers = totalDrivers - suspendedDrivers;
-            var inactiveDrivers = suspendedDrivers;
+            var withoutVehicles = metrics.TotalDrivers - metrics.DriversWithVehicles;
+            var activeDrivers = metrics.TotalDrivers - metrics.SuspendedDrivers;
+            var inactiveDrivers = metrics.SuspendedDrivers;
 
             return new DriverDashboardMetricsDto
             {
-                TotalDrivers = totalDrivers,
-                AvailableDrivers = availableDrivers,
-                BusyDrivers = busyDrivers,
-                OfflineDrivers = offlineDrivers,
-                OnBreakDrivers = onBreakDrivers,
-                SuspendedDrivers = suspendedDrivers,
-                DriversWithVehicles = withVehicles,
+                TotalDrivers = metrics.TotalDrivers,
+                AvailableDrivers = metrics.AvailableDrivers,
+                BusyDrivers = metrics.BusyDrivers,
+                OfflineDrivers = metrics.OfflineDrivers,
+                OnBreakDrivers = metrics.OnBreakDrivers,
+                SuspendedDrivers = metrics.SuspendedDrivers,
+                DriversWithVehicles = metrics.DriversWithVehicles,
                 DriversWithoutVehicles = withoutVehicles,
                 ActiveDrivers = activeDrivers,
                 InactiveDrivers = inactiveDrivers

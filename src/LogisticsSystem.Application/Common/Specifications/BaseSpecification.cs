@@ -20,6 +20,18 @@ namespace LogisticsSystem.Application.Common.Specifications
         public int Take { get; private set; }
         public int Skip { get; private set; }
         public bool IsPagingEnabled { get; private set; }
+        public bool IsNoTracking { get; private set; } = true;
+        public bool IsSplitQuery { get; private set; } = false;
+
+        protected void AsNoTracking(bool isNoTracking = true)
+        {
+            IsNoTracking = isNoTracking;
+        }
+
+        protected void AsSplitQuery(bool isSplitQuery = true)
+        {
+            IsSplitQuery = isSplitQuery;
+        }
 
         protected void AddCriteria(Expression<Func<TEntity, bool>> criteria)
         {
