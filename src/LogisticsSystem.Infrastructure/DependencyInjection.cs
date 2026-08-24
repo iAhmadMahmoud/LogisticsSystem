@@ -1,4 +1,5 @@
 using Hangfire;
+using Hangfire.SqlServer;
 using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Common.Interfaces.Services;
@@ -45,8 +46,19 @@ namespace LogisticsSystem.Infrastructure
 
             services.AddHangfire(config =>
             {
-                config.UseSqlServerStorage(
-                    configuration.GetConnectionString("LogisticsSystem"));
+                config.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+                      .UseSimpleAssemblyNameTypeSerializer()
+                      .UseRecommendedSerializerSettings()
+                      .UseSqlServerStorage(
+                          configuration.GetConnectionString("LogisticsSystem"),
+                          new SqlServerStorageOptions
+                          {
+                              CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+                              SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+                              QueuePollInterval = TimeSpan.FromSeconds(15),
+                              UseRecommendedIsolationLevel = true,
+                              DisableGlobalLocks = true
+                          });
             });
 
             services.AddSignalR();

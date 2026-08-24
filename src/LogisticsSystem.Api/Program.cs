@@ -3,6 +3,7 @@ using LogisticsSystem.Api.Common.Extensions;
 using LogisticsSystem.Application;
 using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Infrastructure;
+using LogisticsSystem.Infrastructure.BackgroundJobs;
 using LogisticsSystem.Infrastructure.SignalR;
 using Microsoft.OpenApi;
 using Serilog;
@@ -75,7 +76,12 @@ public class Program
 
         if (!app.Environment.IsEnvironment("Testing"))
         {
-            app.UseHangfireDashboard("/hangfire");
+            app.UseHangfireDashboard("/hangfire", new DashboardOptions
+            {
+                Authorization = new[] { new HangfireAuthorizationFilter() },
+                DashboardTitle = "Logistics System Background Jobs",
+                AppPath = "/swagger"
+            });
             RecurringJob.AddOrUpdate<IAssignmentExpirationService>("expire-dispatch-assignments", service => service.ExpireAssignmentsAsync(CancellationToken.None), Cron.Minutely);
 
             using (var scope = app.Services.CreateScope())
