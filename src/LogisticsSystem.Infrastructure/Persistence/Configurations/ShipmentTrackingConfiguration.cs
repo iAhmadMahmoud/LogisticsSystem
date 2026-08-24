@@ -1,4 +1,4 @@
-﻿using LogisticsSystem.Domain.Entities;
+using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Infrastructure.Persistence.Configurations.Base;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -25,6 +25,8 @@ namespace LogisticsSystem.Infrastructure.Persistence.Configurations
             builder.HasIndex(x => x.ShipmentId);
 
             builder.HasIndex(x => x.RecordedAt);
+
+            builder.HasIndex(x => new { x.ShipmentId, x.RecordedAt });
 
             builder.HasOne(x => x.Shipment)
                    .WithMany(x => x.ShipmentTrackings)

@@ -1,4 +1,4 @@
-﻿using LogisticsSystem.Domain.Entities;
+using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
 using LogisticsSystem.Infrastructure.Persistence.Configurations.Base;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +22,12 @@ namespace LogisticsSystem.Infrastructure.Persistence.Configurations
                .HasDefaultValue(AssignmentStatus.Pending);
 
             builder.HasIndex(x => x.Status);
+
+            builder.HasIndex(x => x.DriverId);
+
+            builder.HasIndex(x => new { x.Status, x.SentAt });
+
+            builder.HasIndex(x => new { x.DriverId, x.Status });
 
             builder.Property(x=>x.SentAt) 
                 .IsRequired();

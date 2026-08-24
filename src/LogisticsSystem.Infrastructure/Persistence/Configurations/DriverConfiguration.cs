@@ -1,4 +1,4 @@
-﻿using LogisticsSystem.Domain.Entities;
+using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Infrastructure.Identity;
 using LogisticsSystem.Infrastructure.Persistence.Configurations.Base;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +23,10 @@ namespace LogisticsSystem.Infrastructure.Persistence.Configurations
 
             builder.HasIndex(x => x.UserId)
                .IsUnique();
+
+            builder.HasIndex(x => x.Status);
+
+            builder.HasIndex(x => x.VehicleId);
 
             builder.Property(x => x.Status)
                 .HasConversion<int>();

@@ -1,4 +1,4 @@
-﻿using LogisticsSystem.Domain.Entities;
+using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Infrastructure.Persistence.Configurations.Base;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -19,6 +19,12 @@ namespace LogisticsSystem.Infrastructure.Persistence.Configurations
 
             builder.HasIndex(x => x.PlateNumber)
                 .IsUnique();
+
+            builder.HasIndex(x => x.Type);
+
+            builder.HasIndex(x => x.IsActive);
+
+            builder.HasIndex(x => new { x.IsActive, x.Type });
 
             builder.Property(x=>x.Brand)
                 .HasMaxLength(50);

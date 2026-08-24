@@ -1,4 +1,4 @@
-﻿using LogisticsSystem.Domain.Entities;
+using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Infrastructure.Identity;
 using LogisticsSystem.Infrastructure.Persistence.Configurations.Base;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +25,8 @@ namespace LogisticsSystem.Infrastructure.Persistence.Configurations
                 .IsUnique();
 
             builder.HasIndex(x => x.UserId);
+
+            builder.HasIndex(x => new { x.UserId, x.IsRevoked, x.ExpiresAt });
 
             builder.Property(x => x.ExpiresAt)
                 .IsRequired();
