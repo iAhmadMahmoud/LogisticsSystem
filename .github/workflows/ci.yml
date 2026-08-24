@@ -1,0 +1,75 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Build & Test (.NET 10)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore NuGet Dependencies
+        run: dotnet restore
+
+      - name: Build Solution (Release)
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Run Unit Tests
+        run: >
+          dotnet test tests/LogisticsSystem.UnitTests/LogisticsSystem.UnitTests.csproj
+          --configuration Release
+          --no-build
+          --logger "trx;LogFileName=unit_tests.trx"
+          --results-directory ./TestResults
+
+      - name: Run Integration Tests
+        run: >
+          dotnet test tests/LogisticsSystem.IntegrationTests/LogisticsSystem.IntegrationTests.csproj
+          --configuration Release
+          --no-build
+          --logger "trx;LogFileName=integration_tests.trx"
+          --results-directory ./TestResults
+
+      - name: Upload Test Results Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: ./TestResults/*.trx
+          retention-days: 14
+
+  docker-build-and-validate:
+    name: Docker Build & Image Validation
+    needs: build-and-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Multi-Stage Docker Image
+        run: docker build -t logisticssystem-api:${{ github.sha }} .
+
+      - name: Validate Docker Image Size & Layers
+        run: docker images logisticssystem-api:${{ github.sha }}
