@@ -1,4 +1,4 @@
-name: Continuous Deployment (Render)
+name: Continuous Deployment
 
 on:
   push:
@@ -33,29 +33,29 @@ jobs:
         run: |
           dotnet test --configuration Release --no-build
 
-      - name: Trigger Render Deploy Hook
-        if: success() && env.RENDER_DEPLOY_HOOK_URL != ''
+      - name: Trigger Production Deployment Webhook
+        if: success() && (env.DEPLOY_WEBHOOK_URL != '' || env.RENDER_DEPLOY_HOOK_URL != '')
         env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL || secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          echo "Triggering deployment on Render..."
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$RENDER_DEPLOY_HOOK_URL")
+          echo "Triggering automated production deployment webhook..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$DEPLOY_WEBHOOK_URL")
           HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
           if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
-            echo "Successfully triggered Render deployment (HTTP $HTTP_STATUS)."
+            echo "Successfully triggered deployment (HTTP $HTTP_STATUS)."
           else
-            echo "Failed to trigger Render deployment (HTTP $HTTP_STATUS): $RESPONSE"
+            echo "Failed to trigger deployment (HTTP $HTTP_STATUS): $RESPONSE"
             exit 1
           fi
 
       - name: Verify Production Health Endpoint
-        if: success() && env.RENDER_APP_URL != ''
+        if: success() && (env.APP_URL != '' || env.RENDER_APP_URL != '')
         env:
-          RENDER_APP_URL: ${{ secrets.RENDER_APP_URL }}
+          APP_URL: ${{ secrets.APP_URL || secrets.RENDER_APP_URL }}
         run: |
           echo "Waiting 30 seconds for container rollout..."
           sleep 30
-          HEALTH_URL="${RENDER_APP_URL%/}/health"
+          HEALTH_URL="${APP_URL%/}/health"
           echo "Probing health endpoint at $HEALTH_URL..."
           curl -f --retry 10 --retry-delay 15 --retry-connrefused --max-time 10 "$HEALTH_URL"
           echo "Production deployment is verified and HEALTHY!"

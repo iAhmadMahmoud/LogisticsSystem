@@ -53,4 +53,4 @@ All **461 Unit and Integration Tests** will run against the solution with 100% p
 
 ## Production Deployment & Operations
 
-For complete deployment instructions to free cloud hosting (MonsterASP.NET SQL Server + Render.com Web Service + UptimeRobot keep-alive), refer to the **[Production Deployment & Operations Playbook](docs/DEPLOYMENT_GUIDE.md)**.
+For complete production configuration, Docker container setup, environment variables reference, and operations runbook, refer to the **[Production Deployment & Operations Playbook](docs/DEPLOYMENT_GUIDE.md)**.
