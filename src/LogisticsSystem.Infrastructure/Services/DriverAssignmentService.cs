@@ -4,6 +4,7 @@ using LogisticsSystem.Application.Features.Drivers.Specifications;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace LogisticsSystem.Infrastructure.Services
 {
@@ -11,14 +12,16 @@ namespace LogisticsSystem.Infrastructure.Services
     {
         private readonly IGenericRepository<Driver> _driverRepository;
         private readonly IGenericRepository<DispatchAssignment> _assignmentRepository;
-
+        private readonly ILogger<DriverAssignmentService> _logger;
 
         public DriverAssignmentService(
             IGenericRepository<Driver> driverRepository,
-            IGenericRepository<DispatchAssignment> assignmentRepository)
+            IGenericRepository<DispatchAssignment> assignmentRepository,
+            ILogger<DriverAssignmentService> logger)
         {
             _driverRepository = driverRepository;
             _assignmentRepository = assignmentRepository;
+            _logger = logger;
         }
 
         public async Task<Driver?> FindBestAvailableDriverAsync(
@@ -56,8 +59,27 @@ namespace LogisticsSystem.Infrastructure.Services
                 .OrderBy(x => x.Distance)
                 .ToList();
 
+            var selected = candidates.FirstOrDefault();
+
+            if (selected is not null)
+            {
+                _logger.LogInformation(
+                    "Dispatch: Selected driver {DriverId} (distance: {DistanceKm:F2} km) for shipment {ShipmentId} from {CandidateCount} candidates.",
+                    selected.Driver.Id,
+                    selected.Distance,
+                    shipment.Id,
+                    candidates.Count);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Dispatch: No available eligible driver found for shipment {ShipmentId} ({TotalAvailable} available drivers disqualified).",
+                    shipment.Id,
+                    drivers.Count);
+            }
+
             // 4. Return nearest eligible driver
-            return candidates.FirstOrDefault()?.Driver;
+            return selected?.Driver;
         }
 
         private static double CalculateDistance(

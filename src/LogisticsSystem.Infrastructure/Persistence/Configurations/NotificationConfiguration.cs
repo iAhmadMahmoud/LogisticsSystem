@@ -1,4 +1,4 @@
-﻿using LogisticsSystem.Domain.Entities;
+using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Infrastructure.Identity;
 using LogisticsSystem.Infrastructure.Persistence.Configurations.Base;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +24,12 @@ namespace LogisticsSystem.Infrastructure.Persistence.Configurations
 
             builder.Property(x => x.Type)
                 .HasConversion<int>();
+
+            builder.HasIndex(x => x.UserId);
+
+            builder.HasIndex(x => new { x.UserId, x.IsRead });
+
+            builder.HasIndex(x => new { x.UserId, x.CreatedAt });
 
             builder.HasOne<ApplicationUser>()
                 .WithMany(x => x.Notifications)

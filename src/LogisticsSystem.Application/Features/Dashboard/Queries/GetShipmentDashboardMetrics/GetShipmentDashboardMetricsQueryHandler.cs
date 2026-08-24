@@ -20,38 +20,25 @@ namespace LogisticsSystem.Application.Features.Dashboard.Queries.GetShipmentDash
             var todayUtc = DateTime.UtcNow.Date;
             var tomorrowUtc = todayUtc.AddDays(1);
 
-            var query = _context.Shipments.AsNoTracking();
+            var metrics = await _context.Shipments
+                .AsNoTracking()
+                .GroupBy(_ => 1)
+                .Select(g => new ShipmentDashboardMetricsDto
+                {
+                    TotalShipments = g.Count(),
+                    PendingShipments = g.Count(s => s.Status == ShipmentStatus.Pending),
+                    AssignedShipments = g.Count(s => s.Status == ShipmentStatus.Assigned),
+                    PickedUpShipments = g.Count(s => s.Status == ShipmentStatus.PickedUp),
+                    InTransitShipments = g.Count(s => s.Status == ShipmentStatus.InTransit),
+                    DeliveredShipments = g.Count(s => s.Status == ShipmentStatus.Delivered),
+                    CancelledShipments = g.Count(s => s.Status == ShipmentStatus.Cancelled),
+                    FailedShipments = g.Count(s => s.Status == ShipmentStatus.Failed),
+                    ShipmentsCreatedToday = g.Count(s => s.CreatedAt >= todayUtc && s.CreatedAt < tomorrowUtc),
+                    ShipmentsDeliveredToday = g.Count(s => s.DeliveredAt.HasValue && s.DeliveredAt.Value >= todayUtc && s.DeliveredAt.Value < tomorrowUtc)
+                })
+                .FirstOrDefaultAsync(cancellationToken);
 
-            var statusCounts = await query
-                .GroupBy(s => s.Status)
-                .Select(g => new { Status = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
-
-            var totalShipments = statusCounts.Values.Sum();
-            var pendingShipments = statusCounts.GetValueOrDefault(ShipmentStatus.Pending, 0);
-            var assignedShipments = statusCounts.GetValueOrDefault(ShipmentStatus.Assigned, 0);
-            var pickedUpShipments = statusCounts.GetValueOrDefault(ShipmentStatus.PickedUp, 0);
-            var inTransitShipments = statusCounts.GetValueOrDefault(ShipmentStatus.InTransit, 0);
-            var deliveredShipments = statusCounts.GetValueOrDefault(ShipmentStatus.Delivered, 0);
-            var cancelledShipments = statusCounts.GetValueOrDefault(ShipmentStatus.Cancelled, 0);
-            var failedShipments = statusCounts.GetValueOrDefault(ShipmentStatus.Failed, 0);
-
-            var createdToday = await query.CountAsync(s => s.CreatedAt >= todayUtc && s.CreatedAt < tomorrowUtc, cancellationToken);
-            var deliveredToday = await query.CountAsync(s => s.DeliveredAt.HasValue && s.DeliveredAt.Value >= todayUtc && s.DeliveredAt.Value < tomorrowUtc, cancellationToken);
-
-            return new ShipmentDashboardMetricsDto
-            {
-                TotalShipments = totalShipments,
-                PendingShipments = pendingShipments,
-                AssignedShipments = assignedShipments,
-                PickedUpShipments = pickedUpShipments,
-                InTransitShipments = inTransitShipments,
-                DeliveredShipments = deliveredShipments,
-                CancelledShipments = cancelledShipments,
-                FailedShipments = failedShipments,
-                ShipmentsCreatedToday = createdToday,
-                ShipmentsDeliveredToday = deliveredToday
-            };
+            return metrics ?? new ShipmentDashboardMetricsDto();
         }
     }
 }

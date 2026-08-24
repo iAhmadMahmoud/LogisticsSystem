@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: logisticssystem-api
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - ConnectionStrings__LogisticsSystem=Server=sqlserver,1433;Database=LogisticsSystem_Docker;User Id=sa;Password=YourStrong@Password123;TrustServerCertificate=True;Encrypt=True;MultipleActiveResultSets=true;
+      - Jwt__Issuer=LogisticsSystem
+      - Jwt__Audience=LogisticsSystemUsers
+      - Jwt__SecretKey=DevSuperSecretKey_ForLocalDevelopmentOnly_NotForProduction_1234567890!
+      - Jwt__AccessTokenExpirationMinutes=60
+      - Jwt__RefreshTokenExpirationDays=7
+      - Email__Provider=Development
+      - Email__SenderEmail=dev-no-reply@logistics.local
+      - Email__SenderName=Logistics System
+      - Email__ConfirmationUrl=http://localhost:8080/confirm-email
+      - Email__ResetPasswordUrl=http://localhost:8080/reset-password
+      - Dispatch__AssignmentExpirationMinutes=5
+      - Cors__AllowedOrigins__0=http://localhost:3000
+      - Cors__AllowedOrigins__1=http://localhost:5173
+      - Cors__AllowedOrigins__2=http://localhost:8080
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    restart: unless-stopped
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: logisticssystem-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrong@Password123
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Password123' -Q 'SELECT 1' -C || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Password123' -Q 'SELECT 1' -C"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+volumes:
+  sqldata:

@@ -1,4 +1,4 @@
-﻿using Hangfire;
+using Hangfire;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Domain.Entities;
@@ -29,7 +29,7 @@ namespace LogisticsSystem.Infrastructure.BackgroundJobs
             _unitOfWork = unitOfWork;
         }
 
-        [AutomaticRetry(Attempts = 3)]
+        [AutomaticRetry(Attempts = 3, OnAttemptsExceeded = AttemptsExceededAction.Fail)]
         public async Task AssignShipmentAsync(
             Guid shipmentId,
             CancellationToken cancellationToken = default)

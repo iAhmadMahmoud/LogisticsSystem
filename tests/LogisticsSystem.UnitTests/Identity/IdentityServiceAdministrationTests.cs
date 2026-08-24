@@ -12,6 +12,7 @@ using LogisticsSystem.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -64,7 +65,8 @@ namespace LogisticsSystem.UnitTests.Identity
                 _emailSenderMock.Object,
                 Options.Create(new EmailOptions()),
                 _currentUserServiceMock.Object,
-                _dbContext);
+                _dbContext,
+                new Mock<ILogger<IdentityService>>().Object);
         }
 
         public void Dispose()

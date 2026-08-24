@@ -1,3 +1,4 @@
+using LogisticsSystem.Api.Common.Extensions;
 using LogisticsSystem.Api.Contracts.Roles;
 using LogisticsSystem.Application.Authorization;
 using LogisticsSystem.Application.Features.RoleManagement.Commands.AssignRoleToUser;
@@ -9,12 +10,14 @@ using LogisticsSystem.Application.Features.RoleManagement.Queries.GetRoles;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LogisticsSystem.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(Policy = Policies.UserManage)]
+    [EnableRateLimiting(RateLimiterPolicies.Admin)]
     public class RolesController : ControllerBase
     {
         private readonly ISender _sender;

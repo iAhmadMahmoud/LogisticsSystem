@@ -7,6 +7,7 @@ using LogisticsSystem.Domain.Enums;
 using LogisticsSystem.Infrastructure.Persistence;
 using LogisticsSystem.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -34,7 +35,8 @@ namespace LogisticsSystem.UnitTests.Dispatch
 
             _service = new DriverAssignmentService(
                 _driverRepoMock.Object,
-                _assignmentRepoMock.Object);
+                _assignmentRepoMock.Object,
+                new Mock<ILogger<DriverAssignmentService>>().Object);
         }
 
         public void Dispose()

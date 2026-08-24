@@ -105,6 +105,10 @@ namespace LogisticsSystem.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Status");
 
+                    b.HasIndex("DriverId", "Status");
+
+                    b.HasIndex("Status", "SentAt");
+
                     b.HasIndex("ShipmentId", "DriverId", "AttemptNumber")
                         .IsUnique();
 
@@ -155,6 +159,8 @@ namespace LogisticsSystem.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("LicenseNumber")
                         .IsUnique();
+
+                    b.HasIndex("Status");
 
                     b.HasIndex("UserId")
                         .IsUnique();
@@ -212,6 +218,10 @@ namespace LogisticsSystem.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("UserId");
 
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.HasIndex("UserId", "IsRead");
+
                     b.ToTable("Notifications", (string)null);
                 });
 
@@ -253,6 +263,8 @@ namespace LogisticsSystem.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "IsRevoked", "ExpiresAt");
 
                     b.ToTable("RefreshTokens", (string)null);
                 });
@@ -356,14 +368,22 @@ namespace LogisticsSystem.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreatedAt");
+
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("DriverId");
+
+                    b.HasIndex("ScheduledAt");
 
                     b.HasIndex("Status");
 
                     b.HasIndex("TrackingNumber")
                         .IsUnique();
+
+                    b.HasIndex("CustomerId", "CreatedAt");
+
+                    b.HasIndex("Status", "CreatedAt");
 
                     b.ToTable("Shipments", (string)null);
                 });
@@ -418,6 +438,8 @@ namespace LogisticsSystem.Infrastructure.Persistence.Migrations
                     b.HasIndex("RecordedAt");
 
                     b.HasIndex("ShipmentId");
+
+                    b.HasIndex("ShipmentId", "RecordedAt");
 
                     b.ToTable("ShipmentTrackings", (string)null);
                 });
@@ -477,8 +499,14 @@ namespace LogisticsSystem.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("IsActive");
+
                     b.HasIndex("PlateNumber")
                         .IsUnique();
+
+                    b.HasIndex("Type");
+
+                    b.HasIndex("IsActive", "Type");
 
                     b.ToTable("Vehicles", (string)null);
                 });
@@ -562,6 +590,8 @@ namespace LogisticsSystem.Infrastructure.Persistence.Migrations
                         .HasColumnType("nvarchar(256)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IsActive");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");

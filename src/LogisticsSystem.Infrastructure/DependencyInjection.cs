@@ -1,4 +1,5 @@
 using Hangfire;
+using Hangfire.SqlServer;
 using LogisticsSystem.Application.Common.Interfaces.Authentication;
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Common.Interfaces.Services;
@@ -45,8 +46,19 @@ namespace LogisticsSystem.Infrastructure
 
             services.AddHangfire(config =>
             {
-                config.UseSqlServerStorage(
-                    configuration.GetConnectionString("LogisticsSystem"));
+                config.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+                      .UseSimpleAssemblyNameTypeSerializer()
+                      .UseRecommendedSerializerSettings()
+                      .UseSqlServerStorage(
+                          configuration.GetConnectionString("LogisticsSystem"),
+                          new SqlServerStorageOptions
+                          {
+                              CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+                              SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+                              QueuePollInterval = TimeSpan.FromSeconds(15),
+                              UseRecommendedIsolationLevel = true,
+                              DisableGlobalLocks = true
+                          });
             });
 
             services.AddSignalR();
@@ -101,7 +113,10 @@ namespace LogisticsSystem.Infrastructure
                 })
                 .AddJwtBearer(options =>
                 {
-                    var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()!;
+                    var jwt = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+                    var secretKey = !string.IsNullOrWhiteSpace(jwt.SecretKey)
+                        ? jwt.SecretKey
+                        : "TemporaryFallbackSecretKeyForConfigurationBindingVerification1234567890!";
 
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
@@ -114,7 +129,7 @@ namespace LogisticsSystem.Infrastructure
                         ValidAudience = jwt.Audience,
 
                         IssuerSigningKey = new SymmetricSecurityKey(
-                            Encoding.UTF8.GetBytes(jwt.SecretKey)),
+                            Encoding.UTF8.GetBytes(secretKey)),
 
                         NameClaimType = ClaimTypes.NameIdentifier,
                         RoleClaimType = ClaimTypes.Role,
@@ -146,7 +161,18 @@ namespace LogisticsSystem.Infrastructure
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
             services.AddScoped<IIdentityService, IdentityService>();
-            services.AddScoped<IEmailSender, EmailSender>();
+            services.AddScoped<EmailSender>();
+            services.AddScoped<FakeEmailSender>();
+            services.AddScoped<SmtpEmailSender>();
+            services.AddScoped<IEmailSender>(sp =>
+            {
+                var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<EmailOptions>>().Value;
+                if (string.Equals(options.Provider, "Smtp", StringComparison.OrdinalIgnoreCase))
+                {
+                    return sp.GetRequiredService<SmtpEmailSender>();
+                }
+                return sp.GetRequiredService<FakeEmailSender>();
+            });
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IShipmentStatusHistoryService,ShipmentStatusHistoryService>();
             services.AddScoped<IDriverAssignmentService, DriverAssignmentService>();
@@ -161,6 +187,12 @@ namespace LogisticsSystem.Infrastructure
             services.AddSingleton<IUserIdProvider, UserIdProvider>();
 
             services.AddScoped<AuditSaveChangesInterceptor>();
+
+            services.AddHealthChecks()
+                .AddCheck<LogisticsSystem.Infrastructure.Persistence.Health.DatabaseHealthCheck>("database", tags: ["ready", "db"])
+                .AddCheck<LogisticsSystem.Infrastructure.Persistence.Health.HangfireHealthCheck>("hangfire", tags: ["ready", "background"])
+                .AddCheck<LogisticsSystem.Infrastructure.Persistence.Health.EmailHealthCheck>("email", tags: ["ready", "email"])
+                .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy("API process is responsive."), tags: ["live"]);
 
             return services;
         }

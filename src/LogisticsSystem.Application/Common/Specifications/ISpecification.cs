@@ -11,5 +11,7 @@ namespace LogisticsSystem.Application.Common.Specifications
         int Take { get; }
         int Skip { get; }
         bool IsPagingEnabled { get; }
+        bool IsNoTracking { get; }
+        bool IsSplitQuery { get; }
     }
 }

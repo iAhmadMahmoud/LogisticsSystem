@@ -284,5 +284,147 @@ namespace LogisticsSystem.IntegrationTests.Endpoints
             var deactRes = await adminClient.PatchAsJsonAsync($"/api/Users/{adminUser.Id}/status", new UpdateUserStatusRequest(IsActive: false));
             deactRes.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         }
+
+        [Fact]
+        public async Task AdminSelfProtection_PreventRemovingAdminRoleFromOwnAccount()
+        {
+            // Arrange
+            await TestAuthHelper.EnsureRolesSeededAsync(_factory.Services);
+            var (adminUser, _) = await TestAuthHelper.SeedCustomerAsync(_factory.Services, email: $"selfdemote_admin_{Guid.NewGuid()}@test.com");
+
+            var adminToken = await TestAuthHelper.GenerateJwtTokenAsync(_factory.Services, adminUser.Id, adminUser.Email!, adminUser.UserName!, Roles.Admin);
+            var adminClient = TestAuthHelper.CreateAuthenticatedClient(_factory, adminToken);
+
+            // Act - Admin attempts to remove Admin role from own account
+            var removeRoleRes = await adminClient.DeleteAsync($"/api/Roles/users/{adminUser.Id}/{Roles.Admin}");
+
+            // Assert
+            removeRoleRes.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        }
+
+        [Fact]
+        public async Task VehicleManagement_PermissionMatrix_AllowedForDispatcherAndAdmin_ForbiddenForCustomerAndDriver()
+        {
+            // Arrange
+            await TestAuthHelper.EnsureRolesSeededAsync(_factory.Services);
+
+            var (custUser, _) = await TestAuthHelper.SeedCustomerAsync(_factory.Services, email: $"veh_cust_{Guid.NewGuid()}@test.com");
+            var (drvUser, _) = await TestAuthHelper.SeedDriverAsync(_factory.Services, email: $"veh_drv_{Guid.NewGuid()}@test.com");
+            var (dispUser, _) = await TestAuthHelper.SeedCustomerAsync(_factory.Services, email: $"veh_disp_{Guid.NewGuid()}@test.com");
+            var (adminUser, _) = await TestAuthHelper.SeedCustomerAsync(_factory.Services, email: $"veh_admin_{Guid.NewGuid()}@test.com");
+
+            var custToken = await TestAuthHelper.GenerateJwtTokenAsync(_factory.Services, custUser.Id, custUser.Email!, custUser.UserName!, Roles.Customer);
+            var drvToken = await TestAuthHelper.GenerateJwtTokenAsync(_factory.Services, drvUser.Id, drvUser.Email!, drvUser.UserName!, Roles.Driver);
+            var dispToken = await TestAuthHelper.GenerateJwtTokenAsync(_factory.Services, dispUser.Id, dispUser.Email!, dispUser.UserName!, Roles.Dispatcher);
+            var adminToken = await TestAuthHelper.GenerateJwtTokenAsync(_factory.Services, adminUser.Id, adminUser.Email!, adminUser.UserName!, Roles.Admin);
+
+            var custClient = TestAuthHelper.CreateAuthenticatedClient(_factory, custToken);
+            var drvClient = TestAuthHelper.CreateAuthenticatedClient(_factory, drvToken);
+            var dispClient = TestAuthHelper.CreateAuthenticatedClient(_factory, dispToken);
+            var adminClient = TestAuthHelper.CreateAuthenticatedClient(_factory, adminToken);
+
+            var createVehiclePayload1 = new
+            {
+                plateNumber = $"PLT-{Guid.NewGuid().ToString().Substring(0, 5).ToUpper()}",
+                brand = "Mercedes",
+                model = "Actros",
+                manufacturingYear = 2023,
+                color = "Blue",
+                type = (int)VehicleType.Truck,
+                capacity = 15000.0
+            };
+
+            var createVehiclePayload2 = new
+            {
+                plateNumber = $"PLT-{Guid.NewGuid().ToString().Substring(0, 5).ToUpper()}",
+                brand = "Volvo",
+                model = "FH16",
+                manufacturingYear = 2024,
+                color = "Red",
+                type = (int)VehicleType.Truck,
+                capacity = 20000.0
+            };
+
+            // Act & Assert - Create Vehicle
+            (await custClient.PostAsJsonAsync("/api/Vehicles", createVehiclePayload1)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            (await drvClient.PostAsJsonAsync("/api/Vehicles", createVehiclePayload1)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            (await dispClient.PostAsJsonAsync("/api/Vehicles", createVehiclePayload1)).StatusCode.Should().Be(HttpStatusCode.Created);
+            (await adminClient.PostAsJsonAsync("/api/Vehicles", createVehiclePayload2)).StatusCode.Should().Be(HttpStatusCode.Created);
+
+            // Act & Assert - View All Vehicles
+            (await custClient.GetAsync("/api/Vehicles")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            (await drvClient.GetAsync("/api/Vehicles")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            (await dispClient.GetAsync("/api/Vehicles")).StatusCode.Should().Be(HttpStatusCode.OK);
+            (await adminClient.GetAsync("/api/Vehicles")).StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        [Fact]
+        public async Task CustomerMeEndpoint_PermissionMatrix_AllowedForCustomer_ForbiddenForDriver()
+        {
+            // Arrange
+            await TestAuthHelper.EnsureRolesSeededAsync(_factory.Services);
+            var (custUser, _) = await TestAuthHelper.SeedCustomerAsync(_factory.Services, email: $"me_cust_{Guid.NewGuid()}@test.com");
+            var (drvUser, _) = await TestAuthHelper.SeedDriverAsync(_factory.Services, email: $"me_drv_{Guid.NewGuid()}@test.com");
+
+            var custToken = await TestAuthHelper.GenerateJwtTokenAsync(_factory.Services, custUser.Id, custUser.Email!, custUser.UserName!, Roles.Customer);
+            var drvToken = await TestAuthHelper.GenerateJwtTokenAsync(_factory.Services, drvUser.Id, drvUser.Email!, drvUser.UserName!, Roles.Driver);
+
+            var custClient = TestAuthHelper.CreateAuthenticatedClient(_factory, custToken);
+            var drvClient = TestAuthHelper.CreateAuthenticatedClient(_factory, drvToken);
+
+            // Act & Assert
+            (await custClient.GetAsync("/api/Customers/me")).StatusCode.Should().Be(HttpStatusCode.OK);
+            (await drvClient.GetAsync("/api/Customers/me")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
+        public async Task NotificationOwnership_UserCannotMarkAnotherUsersNotificationAsRead()
+        {
+            // Arrange
+            await TestAuthHelper.EnsureRolesSeededAsync(_factory.Services);
+            var (userA, _) = await TestAuthHelper.SeedCustomerAsync(_factory.Services, email: $"notif_own_a_{Guid.NewGuid()}@test.com");
+            var (userB, _) = await TestAuthHelper.SeedCustomerAsync(_factory.Services, email: $"notif_own_b_{Guid.NewGuid()}@test.com");
+
+            var notifId = Guid.NewGuid();
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                db.Notifications.Add(new Notification
+                {
+                    Id = notifId,
+                    UserId = userA.Id,
+                    Title = "Test Alert for A",
+                    Message = "Private Message",
+                    Type = NotificationType.DispatchAssignmentReceived,
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var tokenB = await TestAuthHelper.GenerateJwtTokenAsync(_factory.Services, userB.Id, userB.Email!, userB.UserName!, Roles.Customer);
+            var clientB = TestAuthHelper.CreateAuthenticatedClient(_factory, tokenB);
+
+            // Act - User B attempts to mark User A's notification as read
+            var patchRes = await clientB.PatchAsync($"/api/Notifications/{notifId}/read", null);
+
+            // Assert
+            patchRes.StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.Forbidden, HttpStatusCode.UnprocessableEntity);
+        }
+
+        [Fact]
+        public async Task UnauthenticatedSignalR_Returns401Unauthorized()
+        {
+            // Arrange
+            var client = _factory.CreateClient();
+
+            // Act - attempt negotiate without token
+            var notifRes = await client.PostAsync("/hubs/notifications/negotiate", null);
+            var trackRes = await client.PostAsync("/hubs/tracking/negotiate", null);
+
+            // Assert
+            notifRes.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+            trackRes.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        }
     }
 }

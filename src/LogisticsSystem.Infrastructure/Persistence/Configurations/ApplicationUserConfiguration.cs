@@ -1,4 +1,4 @@
-﻿using LogisticsSystem.Infrastructure.Identity;
+using LogisticsSystem.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
@@ -27,6 +27,8 @@ namespace LogisticsSystem.Infrastructure.Persistence.Configurations
 
             builder.Property(x => x.IsActive)
                 .HasDefaultValue(true);
+
+            builder.HasIndex(x => x.IsActive);
 
             builder.HasMany(x => x.RefreshTokens)
                 .WithOne()

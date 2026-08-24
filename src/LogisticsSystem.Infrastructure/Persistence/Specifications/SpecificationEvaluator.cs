@@ -12,27 +12,40 @@ namespace LogisticsSystem.Infrastructure.Persistence.Specifications
         {
             var query = inputQuery;
 
+            if (specification.IsNoTracking)
+            {
+                query = query.AsNoTracking();
+            }
+
+            if (specification.IsSplitQuery)
+            {
+                query = query.AsSplitQuery();
+            }
+
             if (specification.Criteria != null)
             {
                 query = query.Where(specification.Criteria);
             }
 
-            query = specification.Includes.Aggregate(
-                query,
-                (current, include) => current.Include(include));
+            if (evaluatePaging)
+            {
+                query = specification.Includes.Aggregate(
+                    query,
+                    (current, include) => current.Include(include));
 
-            if (specification.OrderBy != null)
-            {
-                query = query.OrderBy(specification.OrderBy);
-            }
-            else if (specification.OrderByDescending != null)
-            {
-                query = query.OrderByDescending(specification.OrderByDescending);
-            }
+                if (specification.OrderBy != null)
+                {
+                    query = query.OrderBy(specification.OrderBy);
+                }
+                else if (specification.OrderByDescending != null)
+                {
+                    query = query.OrderByDescending(specification.OrderByDescending);
+                }
 
-            if (evaluatePaging && specification.IsPagingEnabled)
-            {
-                query = query.Skip(specification.Skip).Take(specification.Take);
+                if (specification.IsPagingEnabled)
+                {
+                    query = query.Skip(specification.Skip).Take(specification.Take);
+                }
             }
 
             return query;

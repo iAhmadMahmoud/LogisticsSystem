@@ -1,4 +1,4 @@
-﻿using LogisticsSystem.Domain.Entities;
+using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Infrastructure.Persistence.Configurations.Base;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -25,6 +25,14 @@ namespace LogisticsSystem.Infrastructure.Persistence.Configurations
             builder.HasIndex(x => x.CustomerId);
 
             builder.HasIndex(x => x.DriverId);
+
+            builder.HasIndex(x => new { x.CustomerId, x.CreatedAt });
+
+            builder.HasIndex(x => new { x.Status, x.CreatedAt });
+
+            builder.HasIndex(x => x.CreatedAt);
+
+            builder.HasIndex(x => x.ScheduledAt);
 
             builder.Property(x => x.PickupAddress)
                 .HasMaxLength(500)
