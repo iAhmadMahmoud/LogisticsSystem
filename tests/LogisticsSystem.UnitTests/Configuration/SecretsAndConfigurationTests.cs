@@ -143,6 +143,39 @@ namespace LogisticsSystem.UnitTests.Configuration
         }
 
         [Fact]
+        public void AppSettingsProduction_MustExist_AndNotContainPlaintextSecrets()
+        {
+            var solutionRoot = FindSolutionRoot();
+            var appSettingsPath = Path.Combine(solutionRoot, "src", "LogisticsSystem.Api", "appsettings.Production.json");
+            File.Exists(appSettingsPath).Should().BeTrue("appsettings.Production.json must exist in Api project");
+
+            var jsonContent = File.ReadAllText(appSettingsPath);
+            using var doc = JsonDocument.Parse(jsonContent);
+            var root = doc.RootElement;
+
+            // Connection string must be empty
+            root.GetProperty("ConnectionStrings").GetProperty("LogisticsSystem").GetString()
+                .Should().BeEmpty("ConnectionStrings:LogisticsSystem must not contain hardcoded credentials in appsettings.Production.json");
+
+            // Jwt SecretKey must be empty
+            root.GetProperty("Jwt").GetProperty("SecretKey").GetString()
+                .Should().BeEmpty("Jwt:SecretKey must not contain hardcoded secret keys in appsettings.Production.json");
+
+            // Email SmtpPassword must be empty
+            root.GetProperty("Email").GetProperty("SmtpPassword").GetString()
+                .Should().BeEmpty("Email:SmtpPassword must not contain hardcoded credentials in appsettings.Production.json");
+
+            // Swagger should be disabled by default in production
+            root.GetProperty("Swagger").GetProperty("EnabledInProduction").GetBoolean()
+                .Should().BeFalse("Swagger should be disabled by default in production settings");
+
+            // Serilog should suppress EF Core command SQL logs
+            root.GetProperty("Serilog").GetProperty("MinimumLevel").GetProperty("Override")
+                .GetProperty("Microsoft.EntityFrameworkCore").GetString()
+                .Should().Be("Warning", "EF Core logging must be Warning in production to prevent SQL parameter leakage");
+        }
+
+        [Fact]
         public void GitIgnore_MustContainEnvironmentAndSecretPatterns()
         {
             var solutionRoot = FindSolutionRoot();

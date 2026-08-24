@@ -91,7 +91,7 @@ public class Program
             }
         }
 
-        if (app.Environment.IsDevelopment())
+        if (app.Environment.IsDevelopment() || builder.Configuration.GetValue<bool>("Swagger:EnabledInProduction", false))
         {
             app.UseSwagger();
             app.UseSwaggerUI();
