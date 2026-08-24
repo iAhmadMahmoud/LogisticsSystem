@@ -44,6 +44,10 @@ namespace LogisticsSystem.UnitTests.Configuration
             // Jwt SecretKey must be empty in base template
             root.GetProperty("Jwt").GetProperty("SecretKey").GetString()
                 .Should().BeEmpty("Jwt:SecretKey must not contain hardcoded secret keys in appsettings.json");
+
+            // Email SmtpPassword must be empty in base template
+            root.GetProperty("Email").GetProperty("SmtpPassword").GetString()
+                .Should().BeEmpty("Email:SmtpPassword must not contain hardcoded credentials in appsettings.json");
         }
 
         [Fact]
@@ -58,6 +62,14 @@ namespace LogisticsSystem.UnitTests.Configuration
                 ["Jwt:SecretKey"] = "SuperSecretCryptographicallySecureProductionKey9876543210!",
                 ["Jwt:AccessTokenExpirationMinutes"] = "15",
                 ["Jwt:RefreshTokenExpirationDays"] = "14",
+                ["Email:Provider"] = "Smtp",
+                ["Email:SenderEmail"] = "prod-no-reply@logistics.com",
+                ["Email:SenderName"] = "Logistics Prod System",
+                ["Email:SmtpHost"] = "smtp.sendgrid.net",
+                ["Email:SmtpPort"] = "587",
+                ["Email:SmtpUser"] = "apikey",
+                ["Email:SmtpPassword"] = "SG.production_api_key_12345",
+                ["Email:EnableSsl"] = "true",
                 ["Email:ConfirmationUrl"] = "https://app.logistics.com/confirm-email",
                 ["Email:ResetPasswordUrl"] = "https://app.logistics.com/reset-password",
                 ["Dispatch:AssignmentExpirationMinutes"] = "10"
@@ -83,8 +95,20 @@ namespace LogisticsSystem.UnitTests.Configuration
 
             // Verify EmailOptions
             var emailOptions = sp.GetRequiredService<IOptions<EmailOptions>>().Value;
+            emailOptions.Provider.Should().Be("Smtp");
+            emailOptions.SenderEmail.Should().Be("prod-no-reply@logistics.com");
+            emailOptions.SenderName.Should().Be("Logistics Prod System");
+            emailOptions.SmtpHost.Should().Be("smtp.sendgrid.net");
+            emailOptions.SmtpPort.Should().Be(587);
+            emailOptions.SmtpUser.Should().Be("apikey");
+            emailOptions.SmtpPassword.Should().Be("SG.production_api_key_12345");
+            emailOptions.EnableSsl.Should().BeTrue();
             emailOptions.ConfirmationUrl.Should().Be("https://app.logistics.com/confirm-email");
             emailOptions.ResetPasswordUrl.Should().Be("https://app.logistics.com/reset-password");
+
+            // Verify IEmailSender resolved to SmtpEmailSender
+            var emailSender = sp.GetRequiredService<IEmailSender>();
+            emailSender.Should().BeOfType<SmtpEmailSender>();
 
             // Verify DispatchOptions
             var dispatchOptions = sp.GetRequiredService<IOptions<DispatchOptions>>().Value;

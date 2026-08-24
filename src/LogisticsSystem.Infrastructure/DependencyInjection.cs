@@ -161,7 +161,18 @@ namespace LogisticsSystem.Infrastructure
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
             services.AddScoped<IIdentityService, IdentityService>();
-            services.AddScoped<IEmailSender, EmailSender>();
+            services.AddScoped<EmailSender>();
+            services.AddScoped<FakeEmailSender>();
+            services.AddScoped<SmtpEmailSender>();
+            services.AddScoped<IEmailSender>(sp =>
+            {
+                var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<EmailOptions>>().Value;
+                if (string.Equals(options.Provider, "Smtp", StringComparison.OrdinalIgnoreCase))
+                {
+                    return sp.GetRequiredService<SmtpEmailSender>();
+                }
+                return sp.GetRequiredService<FakeEmailSender>();
+            });
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddScoped<IShipmentStatusHistoryService,ShipmentStatusHistoryService>();
             services.AddScoped<IDriverAssignmentService, DriverAssignmentService>();

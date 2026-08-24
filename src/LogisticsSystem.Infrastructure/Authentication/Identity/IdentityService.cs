@@ -403,34 +403,20 @@ namespace LogisticsSystem.Infrastructure.Authentication.Identity
 
         private async Task SendConfirmationEmailAsync(string email, string confirmationUrl)
         {
+            var html = EmailTemplateGenerator.GenerateConfirmationEmailHtml(email, confirmationUrl);
             await _emailSender.SendEmailAsync(
                 email,
-                "Confirm your email",
-                $"""
-                <h2>Welcome to Logistics System</h2>
-
-                <p>Please confirm your email by clicking the link below.</p>
-
-                <a href="{confirmationUrl}">
-                    Confirm Email
-                </a>
-                """);
+                "Confirm your email address",
+                html);
         }
 
         private async Task SendResetPasswordEmailAsync(string email, string resetUrl)
         {
+            var html = EmailTemplateGenerator.GeneratePasswordResetEmailHtml(email, resetUrl);
             await _emailSender.SendEmailAsync(
                 email,
                 "Reset your password",
-                $"""
-                <h2>Password Reset</h2>
-
-                <p>Click the link below to reset your password.</p>
-
-                <a href="{resetUrl}">
-                    Reset Password
-                </a>
-                """);
+                html);
         }
 
         private async Task<AuthenticationResult> CreateAuthenticationResultAsync(ApplicationUser user, RefreshToken? refreshToken = null)
