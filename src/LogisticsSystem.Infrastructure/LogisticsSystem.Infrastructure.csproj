@@ -11,9 +11,7 @@
     <ProjectReference Include="..\LogisticsSystem.Domain\LogisticsSystem.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Notifications\" />
-  </ItemGroup>
+
 
   <ItemGroup>
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.24" />

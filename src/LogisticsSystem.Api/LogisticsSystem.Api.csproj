@@ -27,10 +27,6 @@
     <ProjectReference Include="..\LogisticsSystem.Infrastructure\LogisticsSystem.Infrastructure.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Middleware\" />
-    <Folder Include="Configuration\" />
-    <Folder Include="Hubs\" />
-  </ItemGroup>
+
 
 </Project>

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -10,15 +10,7 @@
     <ProjectReference Include="..\LogisticsSystem.Domain\LogisticsSystem.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Authentication\DTOs\" />
-    <Folder Include="Authentication\Interfaces\" />
-    <Folder Include="Authentication\Models\" />
-    <Folder Include="Authentication\Responses\" />
-    <Folder Include="Authentication\Validators\" />
-    <Folder Include="Common\Mappings\" />
-    <Folder Include="Common\Specifications\" />
-  </ItemGroup>
+
 
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="16.2.0" />
