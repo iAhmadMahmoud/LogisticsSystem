@@ -13,6 +13,8 @@ namespace LogisticsSystem.Infrastructure.BackgroundJobs
 {
     public sealed class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
     {
+        private const string CookieName = "hangfire_token";
+
         public bool Authorize(DashboardContext context)
         {
             var httpContext = context.GetHttpContext();
@@ -21,16 +23,18 @@ namespace LogisticsSystem.Infrastructure.BackgroundJobs
                 return false;
             }
 
-            // 1. Check if caller is already authenticated and in Admin role (e.g. via Bearer header or cookie)
+            // 1. Check if caller is already authenticated and in Admin role (e.g. via Bearer header)
             if (httpContext.User.Identity?.IsAuthenticated == true &&
                 httpContext.User.IsInRole(Roles.Admin))
             {
                 return true;
             }
 
-            // 2. Allow passing JWT token via query string: ?access_token=... or ?jwt=...
-            var token = httpContext.Request.Query["access_token"].FirstOrDefault()
-                        ?? httpContext.Request.Query["jwt"].FirstOrDefault();
+            // 2. Allow passing JWT token via query string or persisted cookie
+            var queryToken = httpContext.Request.Query["access_token"].FirstOrDefault()
+                             ?? httpContext.Request.Query["jwt"].FirstOrDefault();
+
+            var token = queryToken ?? httpContext.Request.Cookies[CookieName];
 
             if (!string.IsNullOrWhiteSpace(token))
             {
@@ -59,6 +63,17 @@ namespace LogisticsSystem.Infrastructure.BackgroundJobs
                         var principal = tokenHandler.ValidateToken(token, validationParameters, out _);
                         if (principal.IsInRole(Roles.Admin))
                         {
+                            if (!string.IsNullOrWhiteSpace(queryToken))
+                            {
+                                httpContext.Response.Cookies.Append(CookieName, queryToken, new CookieOptions
+                                {
+                                    HttpOnly = true,
+                                    Secure = httpContext.Request.IsHttps,
+                                    SameSite = SameSiteMode.Lax,
+                                    Expires = DateTimeOffset.UtcNow.AddMinutes(jwtOptions.AccessTokenExpirationMinutes)
+                                });
+                            }
+
                             return true;
                         }
                     }
