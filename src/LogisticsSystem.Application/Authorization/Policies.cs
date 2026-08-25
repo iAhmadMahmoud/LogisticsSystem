@@ -15,10 +15,8 @@ namespace LogisticsSystem.Application.Authorization
         public const string DriverManage = Permissions.Drivers.Manage;
 
         public const string DispatchAssignDriver = Permissions.Dispatch.AssignDriver;
-        public const string DispatchManage = Permissions.Dispatch.Manage;
 
         public const string NotificationView = Permissions.Notifications.View;
-        public const string NotificationSend = Permissions.Notifications.Send;
 
         public const string UserView = Permissions.Users.View;
         public const string UserManage = Permissions.Users.Manage;

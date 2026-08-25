@@ -1,6 +1,5 @@
 using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Common.Interfaces.Services;
-using LogisticsSystem.Application.Features.Dispatch.Specifications;
 using LogisticsSystem.Application.Features.Shipments.Helpers;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;

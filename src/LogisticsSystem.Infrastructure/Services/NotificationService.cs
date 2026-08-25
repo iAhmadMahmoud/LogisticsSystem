@@ -1,11 +1,10 @@
-﻿using LogisticsSystem.Application.Common.Interfaces.Persistence;
+using LogisticsSystem.Application.Common.Interfaces.Persistence;
 using LogisticsSystem.Application.Common.Interfaces.Services;
 using LogisticsSystem.Application.Common.Models;
 using LogisticsSystem.Application.Features.Notifications.Queries.GetMyNotifications;
 using LogisticsSystem.Application.Features.Notifications.Specifications;
 using LogisticsSystem.Domain.Entities;
 using LogisticsSystem.Domain.Enums;
-using Microsoft.EntityFrameworkCore;
 
 namespace LogisticsSystem.Infrastructure.Services
 {

@@ -161,7 +161,6 @@ namespace LogisticsSystem.Infrastructure
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
             services.AddScoped<IIdentityService, IdentityService>();
-            services.AddScoped<EmailSender>();
             services.AddScoped<FakeEmailSender>();
             services.AddScoped<SmtpEmailSender>();
             services.AddScoped<IEmailSender>(sp =>

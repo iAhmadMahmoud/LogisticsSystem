@@ -1,10 +1,9 @@
-﻿using LogisticsSystem.Application.Authorization;
+using LogisticsSystem.Application.Authorization;
 using LogisticsSystem.Application.Common.Models;
 using LogisticsSystem.Application.Features.Notifications.Commands.MarkAsRead;
 using LogisticsSystem.Application.Features.Notifications.Queries.GetMyNotifications;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LogisticsSystem.Api.Controllers
@@ -32,7 +31,6 @@ namespace LogisticsSystem.Api.Controllers
             return Ok(result);
         }
 
-        [Authorize(Policy = Policies.NotificationView)]
         [HttpPatch("{notificationId:guid}/read")]
         public async Task<IActionResult> MarkAsRead(
             Guid notificationId,

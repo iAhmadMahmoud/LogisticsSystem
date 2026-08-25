@@ -23,13 +23,11 @@ namespace LogisticsSystem.Application.Authorization
         public static class Dispatch
         {
             public const string AssignDriver = "Dispatch.AssignDriver";
-            public const string Manage = "Dispatch.Manage";
         }
 
         public static class Notifications
         {
             public const string View = "Notifications.View";
-            public const string Send = "Notifications.Send";
         }
 
         public static class Users

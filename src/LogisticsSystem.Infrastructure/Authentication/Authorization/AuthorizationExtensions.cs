@@ -77,23 +77,11 @@ namespace LogisticsSystem.Infrastructure.Authentication.Authorization
                         Roles.Dispatcher,
                         Roles.Admin));
 
-                options.AddPolicy(
-                    Policies.DispatchManage,
-                    policy => policy.RequireRole(
-                        Roles.Dispatcher,
-                        Roles.Admin));
-
                 // Notifications
 
                 options.AddPolicy(
                     Policies.NotificationView,
                     policy => policy.RequireAuthenticatedUser());
-
-                options.AddPolicy(
-                    Policies.NotificationSend,
-                    policy => policy.RequireRole(
-                        Roles.Dispatcher,
-                        Roles.Admin));
 
                 // Users
 
