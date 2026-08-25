@@ -2,7 +2,7 @@
 
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?style=flat&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download/dotnet/10.0)
 [![C# 14](https://img.shields.io/badge/C%23-14-239120?style=flat&logo=c-sharp&logoColor=white)](https://learn.microsoft.com/en-us/dotnet/csharp/)
-[![Clean Architecture](https://img.shields.io/badge/Architecture-Clean%20%2F%20DDD-blue?style=flat)](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
+[![Clean Architecture](https://img.shields.io/badge/Architecture-Clean%20Architecture-blue?style=flat)](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
 [![CQRS & MediatR](https://img.shields.io/badge/Pattern-CQRS%20%26%20MediatR-orange?style=flat)](https://github.com/jbogard/MediatR)
 [![Tests Passed](https://img.shields.io/badge/Tests-461%20Passed%20(100%25)-success?style=flat&logo=githubactions&logoColor=white)](tests/)
 [![Docker](https://img.shields.io/badge/Docker-Multi--Stage%20(106%20MB)-2496ED?style=flat&logo=docker&logoColor=white)](Dockerfile)
@@ -31,7 +31,7 @@ An enterprise-grade, high-performance Logistics & Supply Chain Management Web AP
 
 ## Architecture & Design
 
-The solution strictly adheres to **Clean Architecture** and **Domain-Driven Design (DDD)** principles. The domain model contains pure enterprise business logic and remains completely independent of frameworks, databases, and UI concerns.
+The solution strictly adheres to **Clean Architecture** principles and the **CQRS (Command Query Responsibility Segregation)** pattern. The domain model contains pure enterprise business logic and remains completely independent of frameworks, databases, and UI concerns.
 
 ```mermaid
 graph TD
@@ -114,7 +114,7 @@ stateDiagram-v2
 | Layer / Concern | Technologies |
 |---|---|
 | **Runtime & Framework** | .NET 10.0, C# 14, ASP.NET Core Web API |
-| **Architecture** | Clean Architecture, DDD, CQRS, Specification Pattern |
+| **Architecture** | Clean Architecture, CQRS, Specification Pattern, Repository Pattern |
 | **Mediator & Validation** | MediatR 14, FluentValidation 12, AutoMapper 16 |
 | **Data & Persistence** | EF Core 10, SQL Server 2022, Audit Save Interceptors |
 | **Real-Time WebSockets** | ASP.NET Core SignalR |
